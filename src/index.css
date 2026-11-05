@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+/* Variables de la charte graphique Dayo RH */
+/* Ces couleurs seront mises à jour dès réception de la charte officielle */
+:root {
+  --color-primary: #1e40af;       /* Bleu principal */
+  --color-primary-dark: #1e3a8a;  /* Bleu foncé */
+  --color-primary-light: #dbeafe; /* Bleu clair */
+  --color-accent: #f59e0b;        /* Couleur d'accent */
+  --color-success: #10b981;       /* Vert succès */
+  --color-danger: #ef4444;        /* Rouge erreur */
+  --color-warning: #f59e0b;       /* Orange alerte */
+  --color-bg: #f8fafc;            /* Fond global */
+  --color-sidebar: #0f172a;       /* Fond sidebar */
+  --color-text: #1e293b;          /* Texte principal */
+  --color-text-muted: #64748b;    /* Texte secondaire */
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
