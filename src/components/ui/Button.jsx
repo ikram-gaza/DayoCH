@@ -1,6 +1,6 @@
 /**
- * Composant Button réutilisable
- * Variantes: primary, secondary, danger, ghost
+ * Composant Button réutilisable — Charte Dayo Group
+ * Variantes: primary, secondary, danger, ghost, accent
  */
 function Button({
   children,
@@ -17,14 +17,21 @@ function Button({
     'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed'
 
   const variants = {
+    // Bleu marine Dayo — action principale
     primary:
-      'bg-blue-700 text-white hover:bg-blue-800 focus:ring-blue-500',
+      'bg-[#24426F] text-white hover:bg-[#13366C] focus:ring-[#24426F]',
+    // Contour bleu — action secondaire
     secondary:
-      'bg-white text-blue-700 border border-blue-700 hover:bg-blue-50 focus:ring-blue-500',
+      'bg-white text-[#24426F] border border-[#24426F] hover:bg-[#D9EBFF] focus:ring-[#24426F]',
+    // Orange Dayo — accent / CTA important
+    accent:
+      'bg-[#FF7600] text-white hover:bg-[#EC7C30] focus:ring-[#FF7600]',
+    // Rouge — action destructive
     danger:
-      'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+      'bg-[#E00613] text-white hover:bg-red-700 focus:ring-red-500',
+    // Transparent — action tertiaire
     ghost:
-      'bg-transparent text-blue-700 hover:bg-blue-50 focus:ring-blue-500',
+      'bg-transparent text-[#24426F] hover:bg-[#D9EBFF] focus:ring-[#24426F]',
   }
 
   const sizes = {

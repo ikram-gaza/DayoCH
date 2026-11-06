@@ -1,33 +1,91 @@
 @import "tailwindcss";
 
-/* Variables de la charte graphique Dayo RH */
-/* Ces couleurs seront mises à jour dès réception de la charte officielle */
+/* =====================================================
+   CHARTE GRAPHIQUE DAYO GROUP — Janvier 2026
+   Couleurs extraites du PDF officiel
+   ===================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap');
+
 :root {
-  --color-primary: #1e40af;       /* Bleu principal */
-  --color-primary-dark: #1e3a8a;  /* Bleu foncé */
-  --color-primary-light: #dbeafe; /* Bleu clair */
-  --color-accent: #f59e0b;        /* Couleur d'accent */
-  --color-success: #10b981;       /* Vert succès */
-  --color-danger: #ef4444;        /* Rouge erreur */
-  --color-warning: #f59e0b;       /* Orange alerte */
-  --color-bg: #f8fafc;            /* Fond global */
-  --color-sidebar: #0f172a;       /* Fond sidebar */
-  --color-text: #1e293b;          /* Texte principal */
-  --color-text-muted: #64748b;    /* Texte secondaire */
+  /* === Couleurs principales Dayo === */
+  --color-primary:       #24426F;   /* Bleu marine institutionnel */
+  --color-primary-dark:  #13366C;   /* Bleu marine foncé */
+  --color-primary-light: #D9EBFF;   /* Bleu très clair */
+
+  /* === Palette bleue (dégradé) === */
+  --color-blue-100: #D9EBFF;
+  --color-blue-200: #B5D9FF;
+  --color-blue-300: #90C6FF;
+  --color-blue-400: #6CB4FF;
+  --color-blue-500: #47A1FF;
+  --color-blue-600: #2390FF;
+  --color-blue-700: #007EFF;
+  --color-blue-800: #006CD9;
+  --color-blue-900: #004790;
+
+  /* === Couleur accent — Orange Dayo === */
+  --color-accent:        #FF7600;   /* Orange principal */
+  --color-accent-light:  #FFBD7E;   /* Orange clair */
+  --color-accent-dark:   #EC7C30;   /* Orange foncé */
+
+  /* === Couleurs sémantiques === */
+  --color-success:  #3B835A;   /* Vert Dayo */
+  --color-danger:   #E00613;   /* Rouge erreur */
+  --color-warning:  #FF7600;   /* Orange alerte */
+  --color-info:     #2390FF;   /* Bleu info */
+
+  /* === Neutres === */
+  --color-text:       #1D1D1B;   /* Texte principal */
+  --color-text-muted: #696969;   /* Texte secondaire */
+  --color-border:     #D7D7D7;   /* Bordures */
+  --color-bg:         #F8F8F8;   /* Fond global */
+  --color-white:      #FFFFFF;
+  --color-gray-100:   #EBEBEB;
+  --color-gray-200:   #D7D7D7;
+  --color-gray-300:   #C5C5C5;
+  --color-gray-400:   #9B9B9A;
+  --color-gray-500:   #858585;
+  --color-gray-600:   #696969;
+  --color-gray-700:   #565655;
+  --color-gray-800:   #3B3B3A;
+  --color-gray-900:   #1D1D1B;
+
+  /* === Sidebar === */
+  --color-sidebar:       #13366C;   /* Bleu marine foncé */
+  --color-sidebar-hover: #24426F;   /* Bleu marine */
+  --color-sidebar-text:  #FFFFFF;
+  --color-sidebar-muted: #B5D9FF;
+
+  /* === Typographie === */
+  --font-primary: 'Ubuntu', system-ui, -apple-system, sans-serif;
+
+  /* === Espacements & arrondis === */
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+
+  /* === Ombres === */
+  --shadow-sm: 0 1px 3px rgba(36,66,111,0.08);
+  --shadow-md: 0 4px 12px rgba(36,66,111,0.12);
+  --shadow-lg: 0 8px 24px rgba(36,66,111,0.16);
 }
 
-* {
+/* === Reset === */
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-primary);
   background-color: var(--color-bg);
   color: var(--color-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
 }
 
 #root {
