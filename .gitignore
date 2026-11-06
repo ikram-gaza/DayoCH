@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Oh My Zsh (ne pas versionner)
+.oh-my-zsh
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
