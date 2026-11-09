@@ -3,7 +3,7 @@ import Sidebar from './Sidebar'
 import Header from './Header'
 import { useAuth } from '../../context/AuthContext'
 
-function MainLayout() {
+export default function MainLayout() {
   const { logout } = useAuth()
   const navigate = useNavigate()
 
@@ -13,24 +13,16 @@ function MainLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-[#EEF2F7]">
-      
-      {/* Sidebar */}
+    <div className="min-h-screen bg-stone-50 lg:pl-64">
       <Sidebar onLogout={handleLogout} />
 
-      {/* Contenu principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        
-        {/* Header */}
+      {/* Zone de contenu */}
+      <div className="flex flex-col">
         <Header />
-
-        {/* Zone de contenu scrollable */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-10">
           <Outlet />
         </main>
       </div>
     </div>
   )
 }
-
-export default MainLayout

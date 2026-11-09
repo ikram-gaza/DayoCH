@@ -1,98 +1,93 @@
-import { Bell, Search } from 'lucide-react'
 import { useState } from 'react'
+import { Bell, Search } from 'lucide-react'
 
-function Header() {
+const mockNotifications = [
+  { id: 1, text: 'Votre demande de congé a été validée', time: 'Il y a 2h', unread: true },
+  { id: 2, text: 'Nouvelle formation disponible : Conformité RGPD', time: 'Il y a 5h', unread: true },
+  { id: 3, text: 'Rappel : Restitution du rétroprojecteur prévue demain', time: 'Hier', unread: false },
+]
+
+export default function Header() {
   const [showNotifications, setShowNotifications] = useState(false)
-
-  // Mock notifications (à remplacer par des vraies données API)
-  const notifications = [
-    { id: 1, text: 'Votre demande de congé a été validée', time: 'Il y a 2h', unread: true },
-    { id: 2, text: 'Nouvelle formation disponible : Conformité RGPD', time: 'Il y a 5h', unread: true },
-    { id: 3, text: 'Rappel : Restitution du rétroprojecteur prévue aujourd\'hui', time: 'Hier', unread: false },
-  ]
-
-  const unreadCount = notifications.filter(n => n.unread).length
+  const unreadCount = mockNotifications.filter((n) => n.unread).length
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
-      
-      {/* Barre de recherche (optionnelle) */}
-      <div className="flex-1 max-w-lg">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9B9B9A]" />
+    <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/90 backdrop-blur-sm">
+      <div className="flex h-14 items-center justify-between gap-4 px-6">
+
+        {/* Recherche */}
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
           <input
             type="search"
-            placeholder="Rechercher..."
-            className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007FE1] focus:border-[#007FE1] transition-colors"
+            placeholder="Rechercher…"
+            className="w-full rounded-xl border border-stone-200 bg-stone-50 py-2 pl-9 pr-4 text-sm text-stone-900 placeholder-stone-400 transition hover:border-stone-300 focus:border-[#007FE1] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#007FE1]/20"
           />
         </div>
-      </div>
 
-      {/* Actions droite */}
-      <div className="flex items-center gap-4">
-        
-        {/* Notifications */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-2 text-[#565655] hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Notifications"
-          >
-            <Bell className="w-5 h-5" />
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-[#F24333] rounded-full" />
-            )}
-          </button>
+        {/* Actions droite */}
+        <div className="flex shrink-0 items-center gap-2">
 
-          {/* Dropdown notifications */}
-          {showNotifications && (
-            <>
-              {/* Overlay pour fermer au clic extérieur */}
-              <div 
-                className="fixed inset-0 z-10"
-                onClick={() => setShowNotifications(false)}
-              />
-              
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-20">
-                <div className="p-4 border-b border-gray-100">
-                  <h3 className="text-sm font-semibold text-[#1D1D1B]">Notifications</h3>
-                  {unreadCount > 0 && (
-                    <p className="text-xs text-[#9B9B9A] mt-0.5">{unreadCount} non lue(s)</p>
-                  )}
-                </div>
+          {/* Cloche notifications */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative grid h-9 w-9 place-items-center rounded-xl text-stone-500 transition hover:bg-stone-100 hover:text-stone-900"
+              aria-label="Notifications"
+            >
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#F24333]" />
+              )}
+            </button>
 
-                <ul className="max-h-80 overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <li className="p-4 text-center text-sm text-[#9B9B9A]">
-                      Aucune notification
-                    </li>
-                  ) : (
-                    notifications.map((notif) => (
+            {/* Dropdown */}
+            {showNotifications && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowNotifications(false)}
+                />
+                <div className="animate-scale-in absolute right-0 z-20 mt-1 w-80 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-lg">
+                  <div className="flex items-center justify-between border-b border-stone-100 px-4 py-3">
+                    <p className="text-sm font-semibold text-stone-900">Notifications</p>
+                    {unreadCount > 0 && (
+                      <span className="rounded-full bg-[#E5F2FD] px-2 py-0.5 text-xs font-semibold text-[#007FE1]">
+                        {unreadCount} nouvelle{unreadCount > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  <ul className="max-h-72 divide-y divide-stone-50 overflow-y-auto">
+                    {mockNotifications.map((notif) => (
                       <li
                         key={notif.id}
-                        className={`p-4 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors ${
-                          notif.unread ? 'bg-[#D9EBFF]/20' : ''
-                        }`}
+                        className={`cursor-pointer px-4 py-3.5 transition hover:bg-stone-50 ${notif.unread ? 'bg-[#F0F8FF]' : ''}`}
                       >
-                        <p className="text-sm text-[#1D1D1B] leading-tight">{notif.text}</p>
-                        <p className="text-xs text-[#9B9B9A] mt-1">{notif.time}</p>
+                        <div className="flex items-start gap-2.5">
+                          {notif.unread && (
+                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#007FE1]" />
+                          )}
+                          <div className={notif.unread ? '' : 'ml-4'}>
+                            <p className="text-sm leading-snug text-stone-800">{notif.text}</p>
+                            <p className="mt-0.5 text-xs text-stone-400">{notif.time}</p>
+                          </div>
+                        </div>
                       </li>
-                    ))
-                  )}
-                </ul>
+                    ))}
+                  </ul>
 
-                <div className="p-2 border-t border-gray-100">
-                  <button className="w-full py-2 text-xs font-medium text-[#007FE1] hover:bg-[#D9EBFF] rounded-lg transition-colors">
-                    Tout marquer comme lu
-                  </button>
+                  <div className="border-t border-stone-100 p-2">
+                    <button className="w-full rounded-xl py-2 text-xs font-semibold text-[#007FE1] transition hover:bg-[#E5F2FD]">
+                      Tout marquer comme lu
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </header>
   )
 }
-
-export default Header
