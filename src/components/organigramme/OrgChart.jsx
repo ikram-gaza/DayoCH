@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, useEffect } from 'react'
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -7,6 +7,8 @@ import ReactFlow, {
   useEdgesState,
   addEdge,
   MarkerType,
+  ReactFlowProvider,
+  useReactFlow,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import EmployeeNode from './EmployeeNode'
@@ -15,8 +17,15 @@ const nodeTypes = {
   employee: EmployeeNode,
 }
 
-function OrgChart({ employees, onSelectEmployee, onChangeResponsable, zoom = 1 }) {
+// Composant interne qui peut utiliser useReactFlow (doit être dans ReactFlowProvider)
+function OrgChartInner({ employees, onSelectEmployee, onChangeResponsable, zoom = 1 }) {
+  const { zoomTo } = useReactFlow()
   const [isDragging, setIsDragging] = useState(false)
+
+  // Synchroniser le zoom externe avec le viewport ReactFlow
+  useEffect(() => {
+    zoomTo(zoom, { duration: 300 })
+  }, [zoom, zoomTo])
   
   // Construire l'arbre hiérarchique
   const buildHierarchy = useCallback(() => {
@@ -169,14 +178,22 @@ function OrgChart({ employees, onSelectEmployee, onChangeResponsable, zoom = 1 }
   }
 
   return (
-    <div className="w-full h-full relative">
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       {/* Indicateur drag */}
       {isDragging && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-[#007FE1] text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
+        <div
+          style={{
+            position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 10, background: '#007FE1', color: 'white',
+            padding: '8px 16px', borderRadius: 8,
+            boxShadow: '0 4px 12px rgba(0,127,225,0.3)',
+            fontSize: 13, fontWeight: 600, pointerEvents: 'none',
+          }}
+        >
           💡 Déposez sur un autre employé pour changer de responsable
         </div>
       )}
-      
+
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -187,18 +204,43 @@ function OrgChart({ employees, onSelectEmployee, onChangeResponsable, zoom = 1 }
         onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
-        minZoom={0.5}
+        minZoom={0.3}
         maxZoom={2}
         defaultViewport={{ x: 0, y: 0, zoom }}
+        proOptions={{ hideAttribution: true }}
       >
-        <Background color="#aaa" gap={16} />
-        <Controls />
+        <Background color="#e5e7eb" gap={20} size={1} />
+        <Controls
+          style={{
+            bottom: 16, left: 16,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            borderRadius: 10, border: '1px solid #e5e7eb',
+            overflow: 'hidden',
+          }}
+          showInteractive={false}
+        />
         <MiniMap
-          nodeColor={(node) => '#007FE1'}
-          maskColor="rgba(0, 127, 225, 0.1)"
+          nodeColor={() => '#007FE1'}
+          maskColor="rgba(0,127,225,0.06)"
+          style={{
+            bottom: 16, right: 16,
+            borderRadius: 10, border: '1px solid #e5e7eb',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          }}
+          pannable
+          zoomable
         />
       </ReactFlow>
     </div>
+  )
+}
+
+// Wrapper avec ReactFlowProvider pour accéder à useReactFlow
+function OrgChart(props) {
+  return (
+    <ReactFlowProvider>
+      <OrgChartInner {...props} />
+    </ReactFlowProvider>
   )
 }
 

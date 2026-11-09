@@ -92,7 +92,7 @@ export default function Sidebar({ onLogout }) {
             <span style={{ color: 'white', fontWeight: 800, fontSize: 18, fontStyle: 'italic', fontFamily: 'Lora, Georgia, serif' }}>D</span>
           </div>
           <div>
-            <p style={{ fontWeight: 700, fontSize: 14, color: '#1c1917', fontFamily: 'Lora, Georgia, serif', letterSpacing: '-0.3px' }}>Dayo RH</p>
+            <p style={{ fontWeight: 700, fontSize: 14, color: '#1c1917', fontFamily: 'Lora, Georgia, serif', letterSpacing: '-0.3px' }}>Dayo CH</p>
             <p style={{ fontSize: 10, color: '#a8a29e', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>Capital Humain</p>
           </div>
         </div>

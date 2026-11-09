@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 
 // ============================================================
-//  DAYO RH — Design System
+//  DAYO CH — Design System
 //  Inspiré de Bailo · Couleurs officielles Groupe Dayo
 // ============================================================
 

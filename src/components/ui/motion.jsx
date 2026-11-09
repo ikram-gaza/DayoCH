@@ -2,7 +2,7 @@ import { animate, motion, MotionConfig, useInView, useMotionValue, useReducedMot
 import { useEffect, useRef, useState } from 'react'
 
 // ============================================================
-//  DAYO RH — Composants d'animation
+//  DAYO CH — Composants d'animation
 //  Inspiré de Bailo · motion/react (Framer Motion)
 // ============================================================
 

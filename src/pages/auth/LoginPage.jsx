@@ -94,7 +94,7 @@ export default function LoginPage() {
             <span style={{ fontSize: 20, fontWeight: 800, color: 'white', fontStyle: 'italic', fontFamily: 'Lora, Georgia, serif' }}>D</span>
           </div>
           <div>
-            <p style={{ fontWeight: 700, color: 'white', fontSize: 15, fontFamily: 'Lora, Georgia, serif', letterSpacing: '-0.3px' }}>Dayo RH</p>
+            <p style={{ fontWeight: 700, color: 'white', fontSize: 15, fontFamily: 'Lora, Georgia, serif', letterSpacing: '-0.3px' }}>Dayo CH</p>
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>Capital Humain</p>
           </div>
         </motion.div>
@@ -184,7 +184,7 @@ export default function LoginPage() {
             }}>
               <span style={{ color: 'white', fontWeight: 700, fontSize: 14 }}>D</span>
             </div>
-            <span style={{ fontWeight: 700, color: '#1c1917' }}>Dayo RH</span>
+            <span style={{ fontWeight: 700, color: '#1c1917' }}>Dayo CH</span>
           </div>
           <span style={{ fontSize: 12, color: '#a8a29e' }}>Espace sécurisé</span>
         </header>
