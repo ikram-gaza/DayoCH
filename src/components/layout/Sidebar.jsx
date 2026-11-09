@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Calendar, Package, MessageSquare,
   GraduationCap, BarChart3, Users, Briefcase,
-  ClipboardCheck, Settings, LogOut, Warehouse,
+  ClipboardCheck, Settings, LogOut, Warehouse, User,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -13,7 +13,7 @@ const menuConfig = {
     { label: 'Fournitures',     path: '/fournitures',    icon: Package },
     { label: 'Sollicitations',  path: '/sollicitations', icon: MessageSquare },
     { label: 'Formations',      path: '/formations',     icon: GraduationCap },
-    { label: 'Paramètres',      path: '/profil',         icon: Settings },
+    { label: 'Mon Profil',      path: '/profil',         icon: User },
   ],
   manager: [
     { label: 'Tableau de bord', path: '/dashboard',   icon: LayoutDashboard },
@@ -22,7 +22,7 @@ const menuConfig = {
     { label: 'Évaluations',     path: '/evaluations',  icon: ClipboardCheck },
     { label: 'Formations',      path: '/formations',   icon: GraduationCap },
     { label: 'Mon équipe',      path: '/equipe',       icon: Users },
-    { label: 'Paramètres',      path: '/profil',       icon: Settings },
+    { label: 'Mon Profil',      path: '/profil',       icon: User },
   ],
   gestionnaire_stock: [
     { label: 'Tableau de bord',  path: '/dashboard',            icon: LayoutDashboard },
@@ -30,7 +30,7 @@ const menuConfig = {
     { label: 'Traçabilité',      path: '/tracabilite',          icon: Package },
     { label: 'Demandes',         path: '/demandes-fournitures', icon: MessageSquare },
     { label: 'Alertes',          path: '/alertes',              icon: BarChart3 },
-    { label: 'Paramètres',       path: '/profil',               icon: Settings },
+    { label: 'Mon Profil',       path: '/profil',               icon: User },
   ],
   super_admin: [
     { label: 'Tableau de bord', path: '/dashboard',    icon: LayoutDashboard },
@@ -158,11 +158,14 @@ export default function Sidebar({ onLogout }) {
         }}>
           <div style={{
             width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-            background: avatarColor.bg,
+            background: avatarColor.bg, overflow: 'hidden',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 12, fontWeight: 700, color: avatarColor.text,
           }}>
-            {initials}
+            {user?.photo
+              ? <img src={user.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : initials
+            }
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: '#1c1917', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

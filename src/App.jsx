@@ -4,6 +4,7 @@ import TwoFactorPage from './pages/auth/TwoFactorPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
 import OrganigrammePage from './pages/admin/OrganigrammePage'
 import FilialesPage from './pages/admin/FilialesPage'
+import ProfilPage from './pages/profil/ProfilPage'
 import MainLayout from './components/layout/MainLayout'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
@@ -39,7 +40,7 @@ function App() {
             <Route path="fournitures" element={<div className="p-6">Module Fournitures (à venir)</div>} />
             <Route path="sollicitations" element={<div className="p-6">Module Sollicitations (à venir)</div>} />
             <Route path="formations" element={<div className="p-6">Module Formations (à venir)</div>} />
-            <Route path="profil" element={<div className="p-6">Mon Profil (à venir)</div>} />
+            <Route path="profil" element={<ProfilPage />} />
             <Route path="evaluations" element={<div className="p-6">Module Évaluations (à venir)</div>} />
             <Route path="equipe" element={<div className="p-6">Mon Équipe (à venir)</div>} />
             <Route path="stock" element={<div className="p-6">Gestion du Stock (à venir)</div>} />

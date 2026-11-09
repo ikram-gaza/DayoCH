@@ -29,6 +29,11 @@ export function AuthProvider({ children }) {
     return false
   }
 
+  // Mise à jour du profil utilisateur
+  const updateUser = (updatedData) => {
+    setUser(prev => ({ ...prev, ...updatedData }))
+  }
+
   // Déconnexion
   const logout = () => {
     setUser(null)
@@ -36,7 +41,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, pendingUser, login, verify2FA, logout }}>
+    <AuthContext.Provider value={{ user, pendingUser, login, verify2FA, updateUser, logout }}>
       {children}
     </AuthContext.Provider>
   )
