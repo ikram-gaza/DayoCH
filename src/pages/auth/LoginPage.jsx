@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Mail, Lock, IdCard } from 'lucide-react'
+import { Eye, EyeOff, ShieldCheck, Lock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import Button from '../../components/ui/Button'
-import Input from '../../components/ui/Input'
 
 function LoginPage() {
   const navigate = useNavigate()
@@ -14,9 +12,6 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  // Détecter si l'identifiant est un email ou un matricule
-  const isEmail = identifier.includes('@')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -34,17 +29,16 @@ function LoginPage() {
     setLoading(true)
 
     try {
-      // TODO: remplacer par l'appel API réel
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
       const mockUser = {
         id: 1,
-        nom: 'Diallo',
-        prenom: 'Amadou',
-        email: 'amadou.diallo@dayo.com',
-        matricule: 'DAY-001',
-        role: 'employe',
-        filiale: 'Dayo Assurance Siège',
+        nom: 'KOTCHOFA',
+        prenom: 'Boris',
+        email: 'boris.kotchofa@dayo.africa',
+        matricule: 'DG-001',
+        role: 'super_admin', // Changé pour tester l'organigramme
+        filiale: 'Dayo Group',
         twoFactorEnabled: identifier === '2fa',
       }
 
@@ -63,164 +57,166 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col" style={{ background: '#EEF2F7' }}>
 
-      {/* Panneau gauche — branding Dayo */}
-      <div
-        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12"
-        style={{ background: 'linear-gradient(135deg, #13366C 0%, #24426F 60%, #2390FF 100%)' }}
-      >
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-md">
-            <span className="text-[#24426F] text-lg font-bold">D</span>
-          </div>
-          <span className="text-white text-xl font-semibold tracking-wide">Dayo Group</span>
-        </div>
-
-        {/* Citation centrale */}
-        <div>
-          <h2 className="text-4xl font-bold text-white leading-tight mb-4">
-            Gérez vos ressources humaines en toute sérénité
-          </h2>
-          <p className="text-[#B5D9FF] text-lg leading-relaxed">
-            Une plateforme centralisée pour toutes vos filiales — congés, formations, évaluations et bien plus.
-          </p>
-
-          {/* Indicateurs */}
-          <div className="flex gap-8 mt-10">
-            <div>
-              <p className="text-white text-2xl font-bold">7</p>
-              <p className="text-[#90C6FF] text-sm">Modules RH</p>
-            </div>
-            <div>
-              <p className="text-white text-2xl font-bold">4</p>
-              <p className="text-[#90C6FF] text-sm">Rôles utilisateurs</p>
-            </div>
-            <div>
-              <p className="text-white text-2xl font-bold">∞</p>
-              <p className="text-[#90C6FF] text-sm">Filiales</p>
+      {/* Header */}
+      <header className="bg-white border-b-2 border-[#007FE1]">
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            <span className="text-[#007FE1] text-2xl font-bold tracking-tight">Dayo</span>
+            <div className="w-px h-8 bg-gray-300 mx-1" />
+            <div className="flex flex-col leading-tight">
+              <span className="text-[#007FE1] text-[10px] font-semibold tracking-widest uppercase">Assurance</span>
+              <span className="text-[#007FE1] text-[10px] font-semibold tracking-widest uppercase">Bénin</span>
             </div>
           </div>
+
+          {/* Espace sécurisé */}
+          <div className="flex items-center gap-1.5 text-sm text-[#007FE1]">
+            <Lock className="w-4 h-4" />
+            <span>Espace employé sécurisé</span>
+          </div>
         </div>
+      </header>
 
-        {/* Footer */}
-        <p className="text-[#6CB4FF] text-sm">
-          © 2026 Dayo Group — Tous droits réservés
-        </p>
-      </div>
-
-      {/* Panneau droit — formulaire */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-[#F8F8F8]">
+      {/* Contenu principal */}
+      <main className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
 
-          {/* En-tête mobile */}
-          <div className="lg:hidden text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3 shadow-lg"
-                 style={{ background: 'linear-gradient(135deg, #24426F, #2390FF)' }}>
-              <span className="text-white text-xl font-bold">D</span>
-            </div>
-            <h1 className="text-xl font-bold text-[#1D1D1B]">Dayo RH</h1>
-          </div>
+          {/* Carte */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
 
-          {/* Carte formulaire */}
-          <div className="bg-white rounded-2xl shadow-md border border-[#D7D7D7] p-8">
-            <h2 className="text-xl font-bold text-[#1D1D1B] mb-1">
-              Connexion à votre espace
-            </h2>
-            <p className="text-sm text-[#696969] mb-6">
-              Utilisez votre adresse e-mail ou votre numéro de matricule.
-            </p>
+            {/* Barre bleue top */}
+            <div className="h-1 bg-[#007FE1]" />
 
-            {/* Message d'erreur */}
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-                <svg className="w-4 h-4 text-[#E00613] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                <p className="text-sm text-[#E00613]">{error}</p>
+            <div className="p-8">
+              {/* Icône */}
+              <div className="w-12 h-12 bg-[#007FE1] rounded-xl flex items-center justify-center mb-5">
+                <ShieldCheck className="w-6 h-6 text-white" />
               </div>
-            )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Identifiant */}
-              <Input
-                id="identifier"
-                label="Adresse e-mail ou Numéro de matricule"
-                placeholder="ex: amadou.diallo@dayo.com ou DAY-001"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                required
-                icon={
-                  isEmail
-                    ? <Mail className="w-4 h-4" />
-                    : <IdCard className="w-4 h-4" />
-                }
-                hint={
-                  identifier
-                    ? isEmail
-                      ? '✓ Connexion par adresse e-mail'
-                      : '✓ Connexion par numéro de matricule'
-                    : undefined
-                }
-              />
+              {/* Badge */}
+              <div className="flex items-center gap-1.5 mb-3">
+                <span className="w-2 h-2 rounded-full bg-[#007FE1] inline-block" />
+                <span className="text-xs font-semibold text-[#007FE1] tracking-widest uppercase">Espace employé</span>
+              </div>
 
-              {/* Mot de passe */}
-              <Input
-                id="password"
-                label="Mot de passe"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Votre mot de passe"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                icon={<Lock className="w-4 h-4" />}
-                rightElement={
+              {/* Titre */}
+              <h1 className="text-2xl font-bold text-[#1D1D1B] mb-2">
+                Connectez-vous à votre espace
+              </h1>
+              <p className="text-sm text-[#696969] mb-6">
+                Bienvenue sur votre espace Dayo Assurance. Saisissez vos identifiants pour accéder à votre compte employé.
+              </p>
+
+              {/* Erreur */}
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                  <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Identifiant */}
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="identifier" className="text-sm font-medium text-[#1D1D1B]">
+                    Identifiant (E-mail ou Matricule)
+                  </label>
+                  <input
+                    id="identifier"
+                    type="text"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    placeholder="Votre e-mail ou votre matricule"
+                    className="w-full px-4 py-3 text-sm rounded-xl border border-[#D7D7D7] bg-white text-[#1D1D1B] placeholder-[#9B9B9A] focus:outline-none focus:ring-2 focus:ring-[#007FE1] focus:border-[#007FE1] transition-colors"
+                  />
+                </div>
+
+                {/* Mot de passe */}
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="password" className="text-sm font-medium text-[#1D1D1B]">
+                    Mot de passe
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Votre mot de passe"
+                      className="w-full px-4 py-3 pr-11 text-sm rounded-xl border border-[#D7D7D7] bg-white text-[#1D1D1B] placeholder-[#9B9B9A] focus:outline-none focus:ring-2 focus:ring-[#007FE1] focus:border-[#007FE1] transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#9B9B9A] hover:text-[#565655] transition-colors"
+                      aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Mot de passe oublié */}
+                <div className="flex justify-end">
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-[#9B9B9A] hover:text-[#565655] transition-colors"
-                    aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                    className="text-sm text-[#007FE1] hover:underline transition-colors"
                   >
-                    {showPassword
-                      ? <EyeOff className="w-4 h-4" />
-                      : <Eye className="w-4 h-4" />
-                    }
+                    Mot de passe oublié ?
                   </button>
-                }
-              />
+                </div>
 
-              {/* Mot de passe oublié */}
-              <div className="flex justify-end">
+                {/* Bouton */}
                 <button
-                  type="button"
-                  className="text-sm text-[#24426F] hover:text-[#007EFF] hover:underline transition-colors"
+                  type="submit"
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#007FE1] hover:bg-[#006AC0] text-white font-medium rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Mot de passe oublié ?
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      </svg>
+                      Connexion en cours...
+                    </>
+                  ) : (
+                    <>
+                      Se connecter
+                      <span className="text-lg leading-none">→</span>
+                    </>
+                  )}
                 </button>
-              </div>
+              </form>
 
-              {/* Bouton connexion */}
-              <Button
-                type="submit"
-                fullWidth
-                size="lg"
-                loading={loading}
-              >
-                Se connecter
-              </Button>
-            </form>
+              {/* Aide */}
+              <p className="text-center text-xs text-[#9B9B9A] mt-5">
+                Un problème de connexion ?{' '}
+                <span className="text-[#007FE1] hover:underline cursor-pointer">
+                  Contactez l'assistance.
+                </span>
+              </p>
+            </div>
           </div>
-
-          {/* Aide */}
-          <p className="text-center text-xs text-[#9B9B9A] mt-6">
-            Problème de connexion ?{' '}
-            <span className="text-[#24426F] hover:underline cursor-pointer">
-              Contacter le service RH
-            </span>
-          </p>
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="py-4 px-6">
+        <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-[#9B9B9A]">
+          <span>© 2026 Dayo Assurance Bénin</span>
+          <div className="flex items-center gap-4">
+            <span className="hover:text-[#007FE1] cursor-pointer transition-colors">Confidentialité</span>
+            <span className="text-[#D7D7D7]">|</span>
+            <span className="hover:text-[#007FE1] cursor-pointer transition-colors">Besoin d'aide ?</span>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

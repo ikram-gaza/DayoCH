@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShieldCheck, ArrowLeft } from 'lucide-react'
+import { ShieldCheck, Lock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import Button from '../../components/ui/Button'
 
 function TwoFactorPage() {
   const navigate = useNavigate()
@@ -71,14 +70,13 @@ function TwoFactorPage() {
     setError('')
 
     try {
-      // TODO: remplacer par l'appel API réel
       await new Promise((resolve) => setTimeout(resolve, 800))
 
       const success = verify2FA(codeToVerify)
       if (success) {
         navigate('/dashboard', { replace: true })
       } else {
-        setError("Code incorrect. Vérifiez votre application d'authentification et réessayez.")
+        setError("Code incorrect. Vérifiez votre application d'authentification.")
         setCode(['', '', '', '', '', ''])
         inputRefs.current[0]?.focus()
       }
@@ -97,149 +95,169 @@ function TwoFactorPage() {
   const isComplete = code.every((digit) => digit !== '')
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col" style={{ background: '#EEF2F7' }}>
 
-      {/* Panneau gauche — branding Dayo */}
-      <div
-        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12"
-        style={{ background: 'linear-gradient(135deg, #13366C 0%, #24426F 60%, #2390FF 100%)' }}
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-md">
-            <span className="text-[#24426F] text-lg font-bold">D</span>
+      {/* Header */}
+      <header className="bg-white border-b-2 border-[#007FE1]">
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            <span className="text-[#007FE1] text-2xl font-bold tracking-tight">Dayo</span>
+            <div className="w-px h-8 bg-gray-300 mx-1" />
+            <div className="flex flex-col leading-tight">
+              <span className="text-[#007FE1] text-[10px] font-semibold tracking-widest uppercase">Assurance</span>
+              <span className="text-[#007FE1] text-[10px] font-semibold tracking-widest uppercase">Bénin</span>
+            </div>
           </div>
-          <span className="text-white text-xl font-semibold tracking-wide">Dayo Group</span>
-        </div>
 
-        <div>
-          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-6">
-            <ShieldCheck className="w-8 h-8 text-white" />
+          {/* Espace sécurisé */}
+          <div className="flex items-center gap-1.5 text-sm text-[#007FE1]">
+            <Lock className="w-4 h-4" />
+            <span>Espace assuré sécurisé</span>
           </div>
-          <h2 className="text-4xl font-bold text-white leading-tight mb-4">
-            Votre sécurité est notre priorité
-          </h2>
-          <p className="text-[#B5D9FF] text-lg leading-relaxed">
-            La double authentification protège votre compte même si votre mot de passe est compromis.
-          </p>
         </div>
+      </header>
 
-        <p className="text-[#6CB4FF] text-sm">
-          © 2026 Dayo Group — Tous droits réservés
-        </p>
-      </div>
-
-      {/* Panneau droit — formulaire */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-[#F8F8F8]">
+      {/* Contenu principal */}
+      <main className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
 
-          {/* En-tête mobile */}
-          <div className="lg:hidden text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3 shadow-lg"
-                 style={{ background: 'linear-gradient(135deg, #24426F, #2390FF)' }}>
-              <span className="text-white text-xl font-bold">D</span>
+          {/* Carte */}
+          <div className="bg-white rounded-2xl shadow-sm border border-dashed border-[#007FE1]/40 overflow-hidden">
+
+            {/* Barre bleue top */}
+            <div className="h-1 bg-[#007FE1]" />
+
+            <div className="p-8">
+              {/* Icône */}
+              <div className="w-12 h-12 bg-[#007FE1] rounded-xl flex items-center justify-center mb-5">
+                <ShieldCheck className="w-6 h-6 text-white" />
+              </div>
+
+              {/* Badge */}
+              <div className="flex items-center gap-1.5 mb-3">
+                <span className="w-2 h-2 rounded-full bg-[#007FE1] inline-block" />
+                <span className="text-xs font-semibold text-[#007FE1] tracking-widest uppercase">Double authentification</span>
+              </div>
+
+              {/* Titre */}
+              <h1 className="text-2xl font-bold text-[#1D1D1B] mb-2">
+                Vérifiez votre connexion
+              </h1>
+              <p className="text-sm text-[#696969] mb-6">
+                Ouvrez votre application d'authentification et saisissez le code à 6 chiffres associé à votre compte Dayo Assurance.
+              </p>
+
+              {/* Erreur */}
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                  <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit}>
+                {/* Label */}
+                <p className="text-sm font-medium text-[#1D1D1B] mb-3">Code à 6 chiffres</p>
+
+                {/* 6 cases */}
+                <div className="flex gap-2 mb-2" onPaste={handlePaste}>
+                  {code.map((digit, index) => (
+                    <input
+                      key={index}
+                      ref={(el) => (inputRefs.current[index] = el)}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleChange(index, e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(index, e)}
+                      className={`
+                        w-full h-12 text-center text-lg font-bold rounded-xl border-2 transition-all duration-200
+                        focus:outline-none focus:ring-2 focus:ring-[#007FE1] focus:border-[#007FE1]
+                        ${digit
+                          ? 'border-[#007FE1] bg-[#D9EBFF] text-[#007FE1]'
+                          : 'border-[#D7D7D7] bg-white text-[#1D1D1B]'
+                        }
+                        ${error ? 'border-red-400 bg-red-50' : ''}
+                      `}
+                      aria-label={`Chiffre ${index + 1}`}
+                    />
+                  ))}
+                </div>
+
+                {/* Hint */}
+                <p className="text-xs text-[#9B9B9A] mb-5">
+                  Utilisez le code actuellement affiché dans l'application.
+                </p>
+
+                {/* Bouton */}
+                <button
+                  type="submit"
+                  disabled={!isComplete || loading}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#007FE1] hover:bg-[#006AC0] text-white font-medium rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      </svg>
+                      Vérification...
+                    </>
+                  ) : (
+                    <>
+                      Vérifier et continuer
+                      <span className="text-lg leading-none">→</span>
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Séparateur */}
+              <div className="border-t border-[#EBEBEB] my-5" />
+
+              {/* Code de récupération */}
+              <div className="text-center">
+                <p className="text-xs text-[#9B9B9A] mb-1">
+                  Vous n'avez pas accès à votre application ?
+                </p>
+                <button
+                  type="button"
+                  className="text-sm text-[#007FE1] hover:underline font-medium transition-colors"
+                >
+                  Utiliser un code de récupération
+                </button>
+              </div>
             </div>
-            <h1 className="text-xl font-bold text-[#1D1D1B]">Dayo RH</h1>
           </div>
 
-          {/* Carte 2FA */}
-          <div className="bg-white rounded-2xl shadow-md border border-[#D7D7D7] p-8">
-
-            {/* Icône et titre */}
-            <div className="flex flex-col items-center mb-6">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4"
-                   style={{ background: '#D9EBFF' }}>
-                <ShieldCheck className="w-7 h-7 text-[#24426F]" />
-              </div>
-              <h2 className="text-xl font-bold text-[#1D1D1B] text-center">
-                Vérification de sécurité
-              </h2>
-              <p className="text-sm text-[#696969] text-center mt-2 leading-relaxed">
-                Saisissez le code à 6 chiffres généré par votre application
-                d'authentification (Google/Microsoft Authenticator).
-              </p>
-            </div>
-
-            {/* Nom de l'utilisateur */}
-            {pendingUser && (
-              <div className="bg-[#F8F8F8] rounded-lg px-4 py-3 mb-6 text-center border border-[#EBEBEB]">
-                <p className="text-sm text-[#696969]">
-                  Connexion en tant que{' '}
-                  <span className="font-semibold text-[#1D1D1B]">
-                    {pendingUser.prenom} {pendingUser.nom}
-                  </span>
-                </p>
-              </div>
-            )}
-
-            {/* Message d'erreur */}
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-                <svg className="w-4 h-4 text-[#E00613] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                <p className="text-sm text-[#E00613]">{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              {/* 6 cases de saisie */}
-              <div className="flex gap-2 justify-center mb-6" onPaste={handlePaste}>
-                {code.map((digit, index) => (
-                  <input
-                    key={index}
-                    ref={(el) => (inputRefs.current[index] = el)}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleChange(index, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(index, e)}
-                    className={`
-                      w-11 h-14 text-center text-xl font-bold rounded-xl border-2 transition-all duration-200
-                      focus:outline-none focus:ring-2 focus:ring-[#24426F] focus:border-[#24426F]
-                      ${digit
-                        ? 'border-[#24426F] bg-[#D9EBFF] text-[#24426F]'
-                        : 'border-[#D7D7D7] bg-white text-[#1D1D1B]'
-                      }
-                      ${error ? 'border-[#E00613] bg-red-50' : ''}
-                    `}
-                    aria-label={`Chiffre ${index + 1}`}
-                  />
-                ))}
-              </div>
-
-              {/* Bouton de validation */}
-              <Button
-                type="submit"
-                fullWidth
-                size="lg"
-                loading={loading}
-                disabled={!isComplete}
-              >
-                Confirmer et accéder à mon espace
-              </Button>
-            </form>
-
-            {/* Lien retour */}
+          {/* Retour connexion */}
+          <div className="text-center mt-4">
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="mt-4 w-full flex items-center justify-center gap-1.5 text-sm text-[#696969] hover:text-[#1D1D1B] transition-colors"
+              className="text-sm text-[#007FE1] hover:underline transition-colors border border-dashed border-[#007FE1]/40 px-4 py-1.5 rounded-lg"
             >
-              <ArrowLeft className="w-4 h-4" />
-              Revenir à la page de connexion
+              ← Retour à la connexion
             </button>
           </div>
-
-          {/* Aide */}
-          <p className="text-center text-xs text-[#9B9B9A] mt-6">
-            Problème avec votre code ?{' '}
-            <span className="text-[#24426F] hover:underline cursor-pointer">
-              Contacter un gestionnaire RH de votre filiale
-            </span>
-          </p>
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="py-4 px-6">
+        <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-[#9B9B9A]">
+          <span>© 2026 Dayo Assurance Bénin</span>
+          <div className="flex items-center gap-4">
+            <span className="hover:text-[#007FE1] cursor-pointer transition-colors">Confidentialité</span>
+            <span className="text-[#D7D7D7]">|</span>
+            <span className="hover:text-[#007FE1] cursor-pointer transition-colors">Besoin d'aide ?</span>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

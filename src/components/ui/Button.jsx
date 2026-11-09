@@ -17,21 +17,21 @@ function Button({
     'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed'
 
   const variants = {
-    // Bleu marine Dayo — action principale
+    // Bleu principal Dayo — action principale
     primary:
-      'bg-[#24426F] text-white hover:bg-[#13366C] focus:ring-[#24426F]',
+      'bg-[#007FE1] text-white hover:bg-[#006AC0] focus:ring-[#007FE1]',
     // Contour bleu — action secondaire
     secondary:
-      'bg-white text-[#24426F] border border-[#24426F] hover:bg-[#D9EBFF] focus:ring-[#24426F]',
-    // Orange Dayo — accent / CTA important
+      'bg-white text-[#007FE1] border border-[#007FE1] hover:bg-[#D9EBFF] focus:ring-[#007FE1]',
+    // Rouge ocre Dayo — accent / CTA important (remplace orange depuis déc. 2025)
     accent:
-      'bg-[#FF7600] text-white hover:bg-[#EC7C30] focus:ring-[#FF7600]',
-    // Rouge — action destructive
+      'bg-[#F24333] text-white hover:bg-[#C9301F] focus:ring-[#F24333]',
+    // Rouge ocre — action destructive
     danger:
-      'bg-[#E00613] text-white hover:bg-red-700 focus:ring-red-500',
+      'bg-[#F24333] text-white hover:bg-[#C9301F] focus:ring-[#F24333]',
     // Transparent — action tertiaire
     ghost:
-      'bg-transparent text-[#24426F] hover:bg-[#D9EBFF] focus:ring-[#24426F]',
+      'bg-transparent text-[#007FE1] hover:bg-[#D9EBFF] focus:ring-[#007FE1]',
   }
 
   const sizes = {

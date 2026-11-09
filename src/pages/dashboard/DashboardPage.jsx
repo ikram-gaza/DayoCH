@@ -1,64 +1,76 @@
-import { useNavigate } from 'react-router-dom'
-import { LogOut, User } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import Button from '../../components/ui/Button'
+import { Calendar, Package, MessageSquare, CheckCircle } from 'lucide-react'
 
 function DashboardPage() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const { user } = useAuth()
 
-  const handleLogout = () => {
-    logout()
-    navigate('/login', { replace: true })
+  // Mock data (à remplacer par API)
+  const stats = {
+    congesRestants: 18,
+    demandesEnCours: 2,
+    formationsCompletees: 5,
+    notificationsPendantes: 3,
   }
-
-  // Badge couleur selon le rôle
-  const roleBadge = {
-    employe: { label: 'Employé', color: 'bg-blue-100 text-blue-700' },
-    manager: { label: 'Manager', color: 'bg-purple-100 text-purple-700' },
-    gestionnaire_stock: { label: 'Gestionnaire Stock', color: 'bg-amber-100 text-amber-700' },
-    super_admin: { label: 'Super Administrateur', color: 'bg-red-100 text-red-700' },
-  }
-
-  const badge = roleBadge[user?.role] || { label: user?.role, color: 'bg-slate-100 text-slate-700' }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-lg">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+    <div className="space-y-6">
+      
+      {/* En-tête */}
+      <div>
+        <h1 className="text-2xl font-bold text-[#1D1D1B]">
+          Bienvenue, {user?.prenom} {user?.nom} !
+        </h1>
+        <p className="text-sm text-[#696969] mt-1">{user?.filiale}</p>
+      </div>
 
-          {/* Avatar */}
-          <div className="w-20 h-20 bg-blue-700 rounded-full flex items-center justify-center mx-auto mb-4">
-            <User className="w-10 h-10 text-white" />
+      {/* Cartes statistiques */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        {/* Congés restants */}
+        <div className="bg-white rounded-xl p-5 border border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <Calendar className="w-8 h-8 text-[#007FE1]" />
           </div>
-
-          {/* Info utilisateur */}
-          <h1 className="text-xl font-bold text-slate-900 mb-1">
-            Bienvenue, {user?.prenom} {user?.nom} !
-          </h1>
-          <p className="text-slate-500 text-sm mb-3">{user?.filiale}</p>
-          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${badge.color}`}>
-            {badge.label}
-          </span>
-
-          {/* Séparateur */}
-          <div className="border-t border-slate-100 my-6" />
-
-          {/* Message temporaire */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-            <p className="text-sm text-blue-700 font-medium">
-              🚧 Tableau de bord en cours de développement
-            </p>
-            <p className="text-xs text-blue-600 mt-1">
-              Les modules RH seront disponibles prochainement.
-            </p>
-          </div>
-
-          <Button variant="secondary" onClick={handleLogout} fullWidth>
-            <LogOut className="w-4 h-4 mr-2" />
-            Se déconnecter
-          </Button>
+          <p className="text-2xl font-bold text-[#1D1D1B]">{stats.congesRestants}</p>
+          <p className="text-sm text-[#696969] mt-1">Jours de congé restants</p>
         </div>
+
+        {/* Demandes en cours */}
+        <div className="bg-white rounded-xl p-5 border border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <MessageSquare className="w-8 h-8 text-[#F24333]" />
+          </div>
+          <p className="text-2xl font-bold text-[#1D1D1B]">{stats.demandesEnCours}</p>
+          <p className="text-sm text-[#696969] mt-1">Demandes en cours</p>
+        </div>
+
+        {/* Fournitures */}
+        <div className="bg-white rounded-xl p-5 border border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <Package className="w-8 h-8 text-[#52784D]" />
+          </div>
+          <p className="text-2xl font-bold text-[#1D1D1B]">3</p>
+          <p className="text-sm text-[#696969] mt-1">Équipements empruntés</p>
+        </div>
+
+        {/* Formations */}
+        <div className="bg-white rounded-xl p-5 border border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <CheckCircle className="w-8 h-8 text-[#E1007F]" />
+          </div>
+          <p className="text-2xl font-bold text-[#1D1D1B]">{stats.formationsCompletees}</p>
+          <p className="text-sm text-[#696969] mt-1">Formations complétées</p>
+        </div>
+      </div>
+
+      {/* Message temporaire */}
+      <div className="bg-[#D9EBFF] border border-[#007FE1]/30 rounded-xl p-5">
+        <p className="text-sm text-[#007FE1] font-semibold">
+          🚧 Tableau de bord en cours de développement
+        </p>
+        <p className="text-sm text-[#006AC0] mt-1">
+          Les modules CH seront disponibles progressivement.
+        </p>
       </div>
     </div>
   )

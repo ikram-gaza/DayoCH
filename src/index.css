@@ -1,75 +1,177 @@
 @import "tailwindcss";
 
 /* =====================================================
-   CHARTE GRAPHIQUE DAYO GROUP — Janvier 2026
-   Couleurs extraites du PDF officiel
+   DAYO CH — DESIGN SYSTEM PREMIUM
+   Inspired by Apple's design philosophy
+   Version: 2.0 — Premium Edition
    ===================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
   /* === Couleurs principales Dayo === */
-  --color-primary:       #24426F;   /* Bleu marine institutionnel */
-  --color-primary-dark:  #13366C;   /* Bleu marine foncé */
-  --color-primary-light: #D9EBFF;   /* Bleu très clair */
+  --color-primary:       #007FE1;
+  --color-primary-dark:  #0066C0;
+  --color-primary-light: #E5F4FF;
+  --color-primary-ultra-light: #F5FAFF;
 
-  /* === Palette bleue (dégradé) === */
-  --color-blue-100: #D9EBFF;
-  --color-blue-200: #B5D9FF;
-  --color-blue-300: #90C6FF;
-  --color-blue-400: #6CB4FF;
-  --color-blue-500: #47A1FF;
-  --color-blue-600: #2390FF;
-  --color-blue-700: #007EFF;
-  --color-blue-800: #006CD9;
-  --color-blue-900: #004790;
+  /* === Palette premium === */
+  --color-accent:        #F24333;
+  --color-success:       #34C759;
+  --color-warning:       #FF9F0A;
+  --color-danger:        #FF3B30;
 
-  /* === Couleur accent — Orange Dayo === */
-  --color-accent:        #FF7600;   /* Orange principal */
-  --color-accent-light:  #FFBD7E;   /* Orange clair */
-  --color-accent-dark:   #EC7C30;   /* Orange foncé */
+  /* === Neutres premium (Apple-like) === */
+  --color-text-primary:   #000000;
+  --color-text-secondary: #6e6e73;
+  --color-text-tertiary:  #86868b;
+  --color-background:     #ffffff;
+  --color-background-secondary: #f5f5f7;
+  --color-background-tertiary:  #fafafa;
+  --color-separator:      #d2d2d7;
+  --color-separator-light: #e5e5ea;
 
-  /* === Couleurs sémantiques === */
-  --color-success:  #3B835A;   /* Vert Dayo */
-  --color-danger:   #E00613;   /* Rouge erreur */
-  --color-warning:  #FF7600;   /* Orange alerte */
-  --color-info:     #2390FF;   /* Bleu info */
+  /* === Surfaces glassmorphism === */
+  --glass-background: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
 
-  /* === Neutres === */
-  --color-text:       #1D1D1B;   /* Texte principal */
-  --color-text-muted: #696969;   /* Texte secondaire */
-  --color-border:     #D7D7D7;   /* Bordures */
-  --color-bg:         #F8F8F8;   /* Fond global */
-  --color-white:      #FFFFFF;
-  --color-gray-100:   #EBEBEB;
-  --color-gray-200:   #D7D7D7;
-  --color-gray-300:   #C5C5C5;
-  --color-gray-400:   #9B9B9A;
-  --color-gray-500:   #858585;
-  --color-gray-600:   #696969;
-  --color-gray-700:   #565655;
-  --color-gray-800:   #3B3B3A;
-  --color-gray-900:   #1D1D1B;
+  /* === Typographie premium === */
+  --font-primary: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-heavy: 800;
 
-  /* === Sidebar === */
-  --color-sidebar:       #13366C;   /* Bleu marine foncé */
-  --color-sidebar-hover: #24426F;   /* Bleu marine */
-  --color-sidebar-text:  #FFFFFF;
-  --color-sidebar-muted: #B5D9FF;
+  /* === Espacements harmonieux === */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
 
-  /* === Typographie === */
-  --font-primary: 'Ubuntu', system-ui, -apple-system, sans-serif;
+  /* === Arrondis premium === */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-full: 9999px;
 
-  /* === Espacements & arrondis === */
-  --radius-sm:  4px;
-  --radius-md:  8px;
-  --radius-lg:  12px;
-  --radius-xl:  16px;
+  /* === Ombres premium (multi-layered) === */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.16), 0 8px 24px rgba(0, 0, 0, 0.08);
 
-  /* === Ombres === */
-  --shadow-sm: 0 1px 3px rgba(36,66,111,0.08);
-  --shadow-md: 0 4px 12px rgba(36,66,111,0.12);
-  --shadow-lg: 0 8px 24px rgba(36,66,111,0.16);
+  /* === Transitions fluides === */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* === Reset & Base === */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-primary);
+  background-color: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  line-height: 1.5;
+  font-weight: var(--font-weight-regular);
+}
+
+/* === Typography premium === */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+h1 { font-size: 3rem; font-weight: var(--font-weight-bold); }
+h2 { font-size: 2.25rem; }
+h3 { font-size: 1.875rem; }
+h4 { font-size: 1.5rem; }
+
+/* === Scrollbar premium === */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-separator);
+  border-radius: var(--radius-full);
+  transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* === Selection === */
+::selection {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary-dark);
+}
+
+/* === Focus states === */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+/* === Animations === */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn var(--transition-base) ease-out;
+}
+
+.animate-slideIn {
+  animation: slideIn var(--transition-base) ease-out;
+}
+
+.animate-scaleIn {
+  animation: scaleIn var(--transition-fast) ease-out;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
 }
 
 /* === Reset === */
