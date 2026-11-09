@@ -13,13 +13,13 @@ export default function MainLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 lg:pl-64">
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#fafaf9' }}>
       <Sidebar onLogout={handleLogout} />
 
-      {/* Zone de contenu */}
-      <div className="flex flex-col">
+      {/* Zone contenu : marge gauche exactement égale à la largeur de la sidebar */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: 256, minWidth: 0 }}>
         <Header />
-        <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-10">
+        <main style={{ flex: 1, width: '100%', maxWidth: 1100, margin: '0 auto', padding: '32px 40px' }}>
           <Outlet />
         </main>
       </div>

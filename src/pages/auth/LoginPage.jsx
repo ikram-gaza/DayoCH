@@ -1,9 +1,28 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { motion, AnimatePresence } from 'motion/react'
 
-function LoginPage() {
+const EASE = [0.22, 1, 0.36, 1]
+
+const FILIALES = [
+  { code: 'BEN', flag: '🇧🇯', name: 'Dayo Bénin' },
+  { code: 'GIN', flag: '🇬🇳', name: 'Dayo Guinée' },
+  { code: 'BFA', flag: '🇧🇫', name: 'Dayo Burkina' },
+  { code: 'CIV', flag: '🇨🇮', name: 'Dayo CI' },
+]
+
+function Spinner() {
+  return (
+    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+    </svg>
+  )
+}
+
+export default function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
 
@@ -16,37 +35,21 @@ function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-
-    if (!identifier.trim()) {
-      setError('Veuillez saisir votre e-mail ou numéro de matricule.')
-      return
-    }
-    if (!password.trim()) {
-      setError('Veuillez saisir votre mot de passe.')
-      return
-    }
+    if (!identifier.trim()) { setError('Veuillez saisir votre e-mail ou matricule.'); return }
+    if (!password.trim())   { setError('Veuillez saisir votre mot de passe.'); return }
 
     setLoading(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 900))
-
+      await new Promise((r) => setTimeout(r, 900))
       const mockUser = {
-        id: 1,
-        nom: 'KOTCHOFA',
-        prenom: 'Boris',
-        email: 'boris.kotchofa@dayo.africa',
-        matricule: 'DG-001',
-        role: 'super_admin',
-        filiale: 'Dayo Group',
+        id: 1, nom: 'KOTCHOFA', prenom: 'Boris',
+        email: 'boris.kotchofa@dayo.africa', matricule: 'DG-001',
+        role: 'super_admin', filiale: 'Dayo Group',
         twoFactorEnabled: identifier === '2fa',
       }
-
       const result = login(mockUser)
-      if (result.requires2FA) {
-        navigate('/2fa')
-      } else {
-        navigate('/dashboard')
-      }
+      if (result.requires2FA) navigate('/2fa')
+      else navigate('/dashboard')
     } catch {
       setError('Identifiant ou mot de passe incorrect.')
     } finally {
@@ -55,153 +58,326 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col">
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#fafaf9' }}>
 
-      {/* Bandeau supérieur */}
-      <header className="bg-white border-b border-stone-200">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          {/* Logo Dayo */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#007FE1] flex items-center justify-center shadow-sm">
-              <span className="text-white text-sm font-bold leading-none">D</span>
-            </div>
-            <span className="font-semibold text-stone-900 tracking-tight">Dayo RH</span>
+      {/* ── PANNEAU GAUCHE décoratif ── */}
+      <div
+        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #00509A 0%, #007FE1 60%, #0066C0 100%)' }}
+      >
+        {/* Cercles décoratifs */}
+        <div style={{ position: 'absolute', right: -80, top: -80, width: 320, height: 320, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+        <div style={{ position: 'absolute', left: -60, bottom: -60, width: 240, height: 240, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+        <div style={{ position: 'absolute', right: 120, bottom: 120, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+
+        {/* Grille décorative */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
+          backgroundSize: '60px 60px',
+        }} />
+
+        {/* Logo */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: EASE }}
+          style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12 }}
+        >
+          <div style={{
+            width: 44, height: 44, borderRadius: 14,
+            background: 'rgba(255,255,255,0.2)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+          }}>
+            <span style={{ fontSize: 20, fontWeight: 800, color: 'white', fontStyle: 'italic', fontFamily: 'Lora, Georgia, serif' }}>D</span>
           </div>
-          <span className="text-xs text-stone-400">Espace employé sécurisé</span>
+          <div>
+            <p style={{ fontWeight: 700, color: 'white', fontSize: 15, fontFamily: 'Lora, Georgia, serif', letterSpacing: '-0.3px' }}>Dayo RH</p>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>Capital Humain</p>
+          </div>
+        </motion.div>
+
+        {/* Contenu principal gauche */}
+        <div style={{ position: 'relative' }}>
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.15, ease: EASE }}
+            style={{ fontSize: 12, fontWeight: 700, color: 'rgba(147,197,253,0.9)', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: 16 }}
+          >
+            Groupe Dayo · Assurance &amp; Finance
+          </motion.p>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.25, ease: EASE }}
+            style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 40, fontWeight: 700, color: 'white', lineHeight: 1.2, marginBottom: 20 }}
+          >
+            Gérez votre capital humain avec{' '}
+            <span style={{ color: '#93C5FD', fontStyle: 'italic' }}>excellence.</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.4, ease: EASE }}
+            style={{ fontSize: 16, color: 'rgba(219,234,254,0.85)', lineHeight: 1.7, maxWidth: 380, marginBottom: 28 }}
+          >
+            Congés, formations, évaluations et organigramme — tout en un seul espace sécurisé pour vos équipes en Afrique.
+          </motion.p>
+
+          {/* Filiales */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.55, ease: EASE }}
+            style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}
+          >
+            {FILIALES.map(({ code, flag, name }) => (
+              <span
+                key={code}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  background: 'rgba(255,255,255,0.15)',
+                  backdropFilter: 'blur(8px)',
+                  borderRadius: 999,
+                  padding: '6px 14px',
+                  fontSize: 12, fontWeight: 600, color: 'white',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                }}
+              >
+                <span>{flag}</span> {name}
+              </span>
+            ))}
+          </motion.div>
         </div>
-      </header>
 
-      {/* Contenu centré */}
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-sm animate-fade-in">
+        {/* Footer gauche */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.7, ease: EASE }}
+          style={{ position: 'relative', fontSize: 12, color: 'rgba(147,197,253,0.7)' }}
+        >
+          © {new Date().getFullYear()} Groupe Dayo — Connexion sécurisée SSL
+        </motion.p>
+      </div>
 
-          {/* Titre au-dessus de la carte */}
-          <div className="mb-6 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
-              Connexion
-            </h1>
-            <p className="mt-1.5 text-sm text-stone-500">
-              Accédez à votre espace Dayo Assurance
-            </p>
+      {/* ── PANNEAU DROIT : formulaire ── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+
+        {/* Header mobile */}
+        <header style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '16px 24px',
+          borderBottom: '1px solid #e7e5e4',
+          background: 'white',
+        }} className="lg:hidden">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 10,
+              background: 'linear-gradient(135deg, #007FE1, #00509A)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span style={{ color: 'white', fontWeight: 700, fontSize: 14 }}>D</span>
+            </div>
+            <span style={{ fontWeight: 700, color: '#1c1917' }}>Dayo RH</span>
           </div>
+          <span style={{ fontSize: 12, color: '#a8a29e' }}>Espace sécurisé</span>
+        </header>
 
-          {/* Carte */}
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
-
-            {/* Liseré bleu en haut */}
-            <div className="h-0.5 bg-[#007FE1]" />
-
-            <div className="p-7">
-
-              {/* Erreur */}
-              {error && (
-                <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 animate-fade-in">
-                  <svg className="mt-0.5 h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  {error}
+        {/* Formulaire centré */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 24px' }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1, ease: EASE }}
+            style={{ width: '100%', maxWidth: 380 }}
+          >
+            {/* Titre */}
+            <div style={{ marginBottom: 32, textAlign: 'center' }}>
+              {/* Logo visible desktop */}
+              <div className="hidden lg:flex" style={{ justifyContent: 'center', marginBottom: 24 }}>
+                <div style={{
+                  width: 52, height: 52, borderRadius: 16,
+                  background: 'linear-gradient(135deg, #007FE1, #00509A)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 8px 24px rgba(0,127,225,0.3)',
+                }}>
+                  <span style={{ color: 'white', fontWeight: 800, fontSize: 22, fontStyle: 'italic', fontFamily: 'Lora, Georgia, serif' }}>D</span>
                 </div>
-              )}
+              </div>
+              <h1 style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 28, fontWeight: 700, color: '#1c1917', letterSpacing: '-0.5px' }}>
+                Connexion
+              </h1>
+              <p style={{ marginTop: 8, fontSize: 15, color: '#78716c' }}>
+                Accédez à votre espace Dayo Assurance
+              </p>
+            </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Carte formulaire */}
+            <div style={{
+              background: 'white',
+              borderRadius: 20,
+              border: '1px solid #e7e5e4',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.07)',
+              overflow: 'hidden',
+            }}>
+              {/* Liseré gradient */}
+              <div style={{ height: 4, background: 'linear-gradient(90deg, #007FE1, #00509A)' }} />
 
-                {/* Identifiant */}
-                <div className="space-y-1.5">
-                  <label htmlFor="identifier" className="block text-sm font-medium text-stone-700">
-                    E-mail ou matricule
-                  </label>
-                  <input
-                    id="identifier"
-                    type="text"
-                    autoComplete="username"
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="ex : a.diallo@dayo.africa ou DAY-001"
-                    className="w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 placeholder-stone-400 transition hover:border-stone-400 focus:border-[#007FE1] focus:outline-none focus:ring-2 focus:ring-[#007FE1]/20"
-                  />
-                </div>
-
-                {/* Mot de passe */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label htmlFor="password" className="block text-sm font-medium text-stone-700">
-                      Mot de passe
-                    </label>
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-[#007FE1] hover:text-[#0066C0] hover:underline underline-offset-4"
+              <div style={{ padding: 28 }}>
+                {/* Erreur */}
+                <AnimatePresence>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      style={{
+                        display: 'flex', gap: 10, alignItems: 'flex-start',
+                        background: '#FEF2F1', border: '1px solid #fecaca',
+                        borderRadius: 12, padding: '12px 14px',
+                        marginBottom: 20, fontSize: 13, color: '#b91c1c',
+                      }}
                     >
-                      Mot de passe oublié ?
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Votre mot de passe"
-                      className="w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 pr-10 text-sm text-stone-900 placeholder-stone-400 transition hover:border-stone-400 focus:border-[#007FE1] focus:outline-none focus:ring-2 focus:ring-[#007FE1]/20"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-stone-400 hover:text-stone-600 transition"
-                      aria-label={showPassword ? 'Masquer' : 'Afficher'}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Bouton Se connecter */}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="mt-2 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#007FE1] px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-[#007FE1]/20 transition duration-200 hover:-translate-y-px hover:bg-[#0066C0] hover:shadow-md hover:shadow-[#007FE1]/25 active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-                >
-                  {loading ? (
-                    <>
-                      <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                      </svg>
-                      Connexion…
-                    </>
-                  ) : (
-                    <>
-                      Se connecter
-                      <span aria-hidden>→</span>
-                    </>
+                      <span style={{ flexShrink: 0, marginTop: 1 }}>⚠️</span>
+                      {error}
+                    </motion.div>
                   )}
-                </button>
-              </form>
+                </AnimatePresence>
+
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+                  {/* Identifiant */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label htmlFor="identifier" style={{ fontSize: 13, fontWeight: 600, color: '#44403c' }}>
+                      E-mail ou matricule
+                    </label>
+                    <input
+                      id="identifier"
+                      type="text"
+                      autoComplete="username"
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      placeholder="a.diallo@dayo.africa ou DAY-001"
+                      style={{
+                        width: '100%', padding: '10px 14px', fontSize: 14,
+                        border: `1px solid ${error ? '#fca5a5' : '#d6d3d1'}`,
+                        borderRadius: 12, outline: 'none', color: '#1c1917',
+                        background: error ? '#FEF2F1' : 'white',
+                        transition: 'border-color 0.15s, box-shadow 0.15s',
+                        boxSizing: 'border-box',
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#007FE1'
+                        e.target.style.boxShadow = '0 0 0 3px rgba(0,127,225,0.15)'
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = error ? '#fca5a5' : '#d6d3d1'
+                        e.target.style.boxShadow = 'none'
+                      }}
+                    />
+                  </div>
+
+                  {/* Mot de passe */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label htmlFor="password" style={{ fontSize: 13, fontWeight: 600, color: '#44403c' }}>
+                        Mot de passe
+                      </label>
+                      <button type="button" style={{ fontSize: 12, fontWeight: 600, color: '#007FE1', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        Oublié ?
+                      </button>
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Votre mot de passe"
+                        style={{
+                          width: '100%', padding: '10px 42px 10px 14px', fontSize: 14,
+                          border: `1px solid ${error ? '#fca5a5' : '#d6d3d1'}`,
+                          borderRadius: 12, outline: 'none', color: '#1c1917',
+                          background: error ? '#FEF2F1' : 'white',
+                          transition: 'border-color 0.15s, box-shadow 0.15s',
+                          boxSizing: 'border-box',
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#007FE1'
+                          e.target.style.boxShadow = '0 0 0 3px rgba(0,127,225,0.15)'
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = error ? '#fca5a5' : '#d6d3d1'
+                          e.target.style.boxShadow = 'none'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{
+                          position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: '#a8a29e', display: 'flex', alignItems: 'center',
+                        }}
+                        aria-label={showPassword ? 'Masquer' : 'Afficher'}
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Bouton connexion */}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      marginTop: 4,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      width: '100%', padding: '11px 20px',
+                      background: loading ? '#a8a29e' : 'linear-gradient(135deg, #007FE1, #0066C0)',
+                      color: 'white', fontWeight: 700, fontSize: 14,
+                      border: 'none', borderRadius: 12, cursor: loading ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 4px 16px rgba(0,127,225,0.3)',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!loading) {
+                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,127,225,0.4)'
+                        e.currentTarget.style.transform = 'translateY(-1px)'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,127,225,0.3)'
+                      e.currentTarget.style.transform = 'none'
+                    }}
+                  >
+                    {loading ? (
+                      <><Spinner /> Connexion…</>
+                    ) : (
+                      <>Se connecter <ArrowRight size={16} /></>
+                    )}
+                  </button>
+                </form>
+              </div>
             </div>
-          </div>
 
-          {/* Aide */}
-          <p className="mt-5 text-center text-xs text-stone-400">
-            Problème de connexion ?{' '}
-            <span className="cursor-pointer font-medium text-[#007FE1] hover:underline underline-offset-4">
-              Contacter le service RH
-            </span>
-          </p>
+            {/* Aide */}
+            <p style={{ marginTop: 24, textAlign: 'center', fontSize: 13, color: '#a8a29e' }}>
+              Problème de connexion ?{' '}
+              <span style={{ color: '#007FE1', fontWeight: 600, cursor: 'pointer' }}>
+                Contacter le service RH
+              </span>
+            </p>
+          </motion.div>
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-stone-200 py-4 px-6">
-        <div className="max-w-5xl mx-auto flex items-center justify-between text-xs text-stone-400">
-          <span>© 2026 Dayo Assurance</span>
-          <div className="flex gap-4">
-            <span className="cursor-pointer hover:text-stone-600 transition">Confidentialité</span>
-            <span className="cursor-pointer hover:text-stone-600 transition">Aide</span>
-          </div>
-        </div>
-      </footer>
+      </div>
     </div>
   )
 }
-
-export default LoginPage
