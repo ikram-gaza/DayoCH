@@ -40,6 +40,7 @@ const menuConfig = {
     { label: 'Statistiques',    path: '/statistiques', icon: BarChart3 },
     { label: 'Évaluations',     path: '/evaluations',  icon: ClipboardCheck },
     { label: 'Formations',      path: '/formations',   icon: GraduationCap },
+    { label: 'Mon Profil',      path: '/profil',       icon: User },
     { label: 'Paramètres',      path: '/parametres',   icon: Settings },
   ],
 }
