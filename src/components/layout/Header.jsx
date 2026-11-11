@@ -4,18 +4,7 @@ import { motion, AnimatePresence } from 'motion/react'
 
 const EASE = [0.22, 1, 0.36, 1]
 
-const mockNotifications = [
-  { id: 1, text: 'Votre demande de congé a été validée',           time: 'Il y a 2h',  tone: 'green', unread: true  },
-  { id: 2, text: 'Nouvelle formation disponible : Conformité RGPD', time: 'Il y a 5h', tone: 'blue',  unread: true  },
-  { id: 3, text: 'Rappel : Restitution du rétroprojecteur demain',  time: 'Hier',       tone: 'amber', unread: false },
-]
-
-const badgeColors = {
-  green: { bg: '#dcfce7', text: '#15803d' },
-  blue:  { bg: '#E5F2FD', text: '#007FE1' },
-  amber: { bg: '#fef9c3', text: '#a16207' },
-  red:   { bg: '#FEF2F1', text: '#dc2626' },
-}
+const mockNotifications = []
 
 export default function Header() {
   const [showNotif, setShowNotif] = useState(false)
@@ -124,7 +113,12 @@ export default function Header() {
 
                   {/* Liste */}
                   <ul style={{ maxHeight: 280, overflowY: 'auto', listStyle: 'none', padding: 0, margin: 0 }}>
-                    {mockNotifications.map((n) => (
+                    {mockNotifications.length === 0 ? (
+                      <li style={{ padding: '28px 16px', textAlign: 'center', color: '#a8a29e', fontSize: 13 }}>
+                        Aucune nouvelle notification
+                      </li>
+                    ) : (
+                      mockNotifications.map((n) => (
                       <li
                         key={n.id}
                         style={{
@@ -146,7 +140,7 @@ export default function Header() {
                           </div>
                         </div>
                       </li>
-                    ))}
+                    )))}
                   </ul>
 
                   {/* Action */}

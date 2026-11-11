@@ -5,6 +5,12 @@ import DashboardPage from './pages/dashboard/DashboardPage'
 import OrganigrammePage from './pages/admin/OrganigrammePage'
 import FilialesPage from './pages/admin/FilialesPage'
 import ProfilPage from './pages/profil/ProfilPage'
+import CongesPage from './pages/conges/CongesPage'
+import FournituresPage from './pages/fournitures/FournituresPage'
+import StockPage from './pages/fournitures/StockPage'
+import TracabilitePage from './pages/fournitures/TracabilitePage'
+import DemandesStockPage from './pages/fournitures/DemandesStockPage'
+import AlertesStockPage from './pages/fournitures/AlertesStockPage'
 import MainLayout from './components/layout/MainLayout'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
@@ -35,21 +41,23 @@ function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             
-            {/* TODO: Routes à implémenter */}
-            <Route path="conges" element={<div className="p-6">Module Congés (à venir)</div>} />
-            <Route path="fournitures" element={<div className="p-6">Module Fournitures (à venir)</div>} />
-            <Route path="sollicitations" element={<div className="p-6">Module Sollicitations (à venir)</div>} />
-            <Route path="formations" element={<div className="p-6">Module Formations (à venir)</div>} />
+            {/* Modules opérationnels */}
+            <Route path="conges" element={<CongesPage />} />
+            <Route path="fournitures" element={<FournituresPage />} />
+            <Route path="stock" element={<StockPage />} />
+            <Route path="tracabilite" element={<TracabilitePage />} />
+            <Route path="demandes-fournitures" element={<DemandesStockPage />} />
+            <Route path="alertes" element={<AlertesStockPage />} />
             <Route path="profil" element={<ProfilPage />} />
-            <Route path="evaluations" element={<div className="p-6">Module Évaluations (à venir)</div>} />
-            <Route path="equipe" element={<div className="p-6">Mon Équipe (à venir)</div>} />
-            <Route path="stock" element={<div className="p-6">Gestion du Stock (à venir)</div>} />
-            <Route path="tracabilite" element={<div className="p-6">Traçabilité (à venir)</div>} />
-            <Route path="demandes-fournitures" element={<div className="p-6">Demandes Fournitures (à venir)</div>} />
-            <Route path="alertes" element={<div className="p-6">Alertes (à venir)</div>} />
-            <Route path="utilisateurs" element={<div className="p-6">Gestion Utilisateurs (à venir)</div>} />
             <Route path="organigramme" element={<OrganigrammePage />} />
             <Route path="filiales" element={<FilialesPage />} />
+
+            {/* TODO: Routes à implémenter */}
+            <Route path="sollicitations" element={<div className="p-6">Module Sollicitations (à venir)</div>} />
+            <Route path="formations" element={<div className="p-6">Module Formations (à venir)</div>} />
+            <Route path="evaluations" element={<div className="p-6">Module Évaluations (à venir)</div>} />
+            <Route path="equipe" element={<div className="p-6">Mon Équipe (à venir)</div>} />
+            <Route path="utilisateurs" element={<div className="p-6">Gestion Utilisateurs (à venir)</div>} />
             <Route path="statistiques" element={<div className="p-6">Statistiques (à venir)</div>} />
             <Route path="parametres" element={<div className="p-6">Paramètres (à venir)</div>} />
           </Route>

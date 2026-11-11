@@ -27,3 +27,4 @@ dist-ssr
 *.sw?
 *.pdf
 *.pdf:Zone.Identifier
+.aider*

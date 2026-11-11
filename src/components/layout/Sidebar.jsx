@@ -34,6 +34,8 @@ const menuConfig = {
   ],
   super_admin: [
     { label: 'Tableau de bord', path: '/dashboard',    icon: LayoutDashboard },
+    { label: 'Congés',          path: '/conges',       icon: Calendar },
+    { label: 'Gestion du stock', path: '/stock',       icon: Warehouse },
     { label: 'Utilisateurs',    path: '/utilisateurs', icon: Users },
     { label: 'Organigramme',    path: '/organigramme', icon: Briefcase },
     { label: 'Filiales',        path: '/filiales',     icon: LayoutDashboard },

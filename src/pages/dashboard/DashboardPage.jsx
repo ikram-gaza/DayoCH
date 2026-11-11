@@ -1,8 +1,11 @@
+import { useNavigate } from 'react-router-dom'
 import { Calendar, Package, MessageSquare, GraduationCap, CheckCircle2, Clock, AlertCircle, ArrowRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { animate, useMotionValue, useInView, useReducedMotion } from 'motion/react'
+import { congesService, STATUTS_CONGES, TYPES_CONGES } from '../../services/congesService'
+import { fournituresService, STATUTS_DEMANDE_FOURNITURES } from '../../services/fournituresService'
 
 const EASE = [0.22, 1, 0.36, 1]
 
@@ -99,10 +102,11 @@ function ActivityRow({ icon: Icon, text, time, iconBg, iconColor, badge, badgeBg
 }
 
 // Bouton action rapide
-function QuickAction({ icon: Icon, label, description, iconBg, iconColor, borderHover }) {
+function QuickAction({ icon: Icon, label, description, iconBg, iconColor, borderHover, onClick }) {
   const [hovered, setHovered] = useState(false)
   return (
     <button
+      onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -136,6 +140,15 @@ function QuickAction({ icon: Icon, label, description, iconBg, iconColor, border
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
+
+  const congesSoldes = congesService.getSoldes(user)
+  const mesDemandes = congesService.getMesDemandes(user)
+  const stockStats = fournituresService.getStats(user)
+  const mesCommandesFournitures = fournituresService.getMesDemandes(user)
+  const equipementsEmpruntesUser = mesCommandesFournitures
+    .filter(d => d.typeDemande === 'emprunt' && (d.statut === 'livre' || d.statut === 'approuve'))
+    .reduce((sum, d) => sum + d.articles.reduce((s, a) => s + a.quantite, 0), 0)
 
   const greeting = () => {
     const h = new Date().getHours()
@@ -152,24 +165,63 @@ export default function DashboardPage() {
   const initials = fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('')
 
   const stats = [
-    { label: 'Jours de congé restants', value: 18, hint: 'Sur 26 jours annuels',       icon: Calendar,       iconBg: '#E5F2FD', iconColor: '#007FE1' },
-    { label: 'Demandes en cours',        value: 2,  hint: '1 en attente de validation', icon: MessageSquare,  iconBg: '#fef9c3', iconColor: '#a16207' },
-    { label: 'Équipements empruntés',    value: 1,  hint: 'Retour prévu le 15 nov.',    icon: Package,        iconBg: '#FEF2F1', iconColor: '#dc2626' },
-    { label: 'Formations complétées',    value: 5,  hint: '2 certifications obtenues',  icon: GraduationCap,  iconBg: '#dcfce7', iconColor: '#16a34a' },
+    { label: 'Jours de congé restants', value: congesSoldes.congesPayes.restant, hint: `Sur ${congesSoldes.congesPayes.alloue} jours annuels`,  icon: Calendar,      iconBg: '#E5F2FD', iconColor: '#007FE1' },
+    { label: 'Demandes en cours',        value: congesSoldes.enAttente.count + (mesCommandesFournitures.filter(d => d.statut === 'en_attente').length), hint: 'Congés & Fournitures', icon: MessageSquare, iconBg: '#fef9c3', iconColor: '#a16207' },
+    {
+      label: user?.role === 'gestionnaire_stock' ? 'Articles en rupture' : 'Équipements empruntés',
+      value: user?.role === 'gestionnaire_stock' ? stockStats.ruptures : equipementsEmpruntesUser,
+      hint: user?.role === 'gestionnaire_stock' ? `${stockStats.stockFaible} sous seuil critique` : (equipementsEmpruntesUser > 0 ? `${equipementsEmpruntesUser} sous votre garde` : 'Aucun emprunt en cours'),
+      icon: Package,
+      iconBg: '#FEF2F1',
+      iconColor: '#dc2626'
+    },
+    { label: 'Formations complétées',    value: 0, hint: 'Aucune formation',      icon: GraduationCap, iconBg: '#dcfce7', iconColor: '#16a34a' },
   ]
 
-  const activities = [
-    { icon: CheckCircle2, text: 'Demande de congé du 20 au 24 nov. validée par votre manager', time: 'Il y a 2 heures', iconBg: '#dcfce7', iconColor: '#16a34a', badge: 'Validé',     badgeBg: '#dcfce7', badgeColor: '#15803d' },
-    { icon: Clock,        text: 'Demande de fournitures (Rame A4 × 5) en attente de validation', time: 'Il y a 5 heures', iconBg: '#fef9c3', iconColor: '#a16207', badge: 'En attente', badgeBg: '#fef9c3', badgeColor: '#a16207' },
-    { icon: GraduationCap, text: 'Nouvelle formation disponible : Conformité RGPD 2026',       time: 'Hier, 14h30',    iconBg: '#E5F2FD', iconColor: '#007FE1', badge: 'Nouveau',     badgeBg: '#E5F2FD', badgeColor: '#007FE1' },
-    { icon: AlertCircle,  text: 'Rappel : restitution du rétroprojecteur prévue demain',       time: 'Hier, 09h00',    iconBg: '#FEF2F1', iconColor: '#dc2626', badge: 'Rappel',      badgeBg: '#FEF2F1', badgeColor: '#dc2626' },
-  ]
+  const activitesConges = mesDemandes.slice(0, 2).map(d => {
+    const type = TYPES_CONGES.find(t => t.id === d.typeId) || TYPES_CONGES[0]
+    const statut = STATUTS_CONGES[d.statut] || STATUTS_CONGES.en_attente
+    return {
+      icon: d.statut === 'valide' ? CheckCircle2 : (d.statut === 'en_attente' ? Clock : AlertCircle),
+      text: `Demande de ${type.label} (${d.nbJours} j.) ${d.statut === 'valide' ? 'validée' : (d.statut === 'refuse' ? 'refusée' : 'en attente')}`,
+      time: `Du ${new Date(d.dateDebut).toLocaleDateString('fr-FR')} au ${new Date(d.dateFin).toLocaleDateString('fr-FR')}`,
+      iconBg: statut.bg,
+      iconColor: statut.color,
+      badge: statut.label,
+      badgeBg: statut.bg,
+      badgeColor: statut.color,
+    }
+  })
+
+  const activitesFournitures = mesCommandesFournitures.slice(0, 2).map(d => {
+    const statut = STATUTS_DEMANDE_FOURNITURES[d.statut] || STATUTS_DEMANDE_FOURNITURES.en_attente
+    return {
+      icon: Package,
+      text: `Commande ${d.reference} (${d.articles.length} article${d.articles.length > 1 ? 's' : ''}) : ${d.articles.map(a => `${a.quantite}× ${a.nom}`).join(', ')}`,
+      time: new Date(d.dateCreation).toLocaleDateString('fr-FR'),
+      iconBg: statut.bg,
+      iconColor: statut.color,
+      badge: statut.label,
+      badgeBg: statut.bg,
+      badgeColor: statut.color,
+    }
+  })
+
+  const activities = [...activitesConges, ...activitesFournitures]
 
   const quickActions = [
-    { icon: Calendar,      label: 'Demander un congé',        description: 'Soumettre une nouvelle demande', iconBg: '#E5F2FD', iconColor: '#007FE1', borderHover: 'rgba(0,127,225,0.3)'  },
-    { icon: Package,       label: 'Commander des fournitures', description: 'Faire une demande de matériel', iconBg: '#fef9c3', iconColor: '#a16207', borderHover: 'rgba(161,98,7,0.3)'    },
+    { icon: Calendar,      label: 'Demander un congé',        description: 'Soumettre une nouvelle demande', iconBg: '#E5F2FD', iconColor: '#007FE1', borderHover: 'rgba(0,127,225,0.3)', onClick: () => navigate('/conges') },
+    {
+      icon: Package,
+      label: user?.role === 'gestionnaire_stock' ? 'Gérer les stocks' : 'Commander des fournitures',
+      description: user?.role === 'gestionnaire_stock' ? 'Inventaire et alertes' : 'Faire une demande de matériel',
+      iconBg: '#fef9c3',
+      iconColor: '#a16207',
+      borderHover: 'rgba(161,98,7,0.3)',
+      onClick: () => navigate(user?.role === 'gestionnaire_stock' ? '/stock' : '/fournitures')
+    },
     { icon: MessageSquare, label: 'Nouvelle sollicitation',    description: 'Envoyer une demande RH',        iconBg: '#dcfce7', iconColor: '#16a34a', borderHover: 'rgba(22,163,74,0.3)'   },
-    { icon: GraduationCap, label: 'Voir les formations',       description: '3 formations disponibles',      iconBg: '#FEF2F1', iconColor: '#dc2626', borderHover: 'rgba(220,38,38,0.25)'  },
+    { icon: GraduationCap, label: 'Voir les formations',       description: 'Aucune formation disponible',   iconBg: '#FEF2F1', iconColor: '#dc2626', borderHover: 'rgba(220,38,38,0.25)'  },
   ]
 
   return (
@@ -225,9 +277,9 @@ export default function DashboardPage() {
           display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12,
         }}>
           {[
-            { label: 'Jours de congé', value: 18 },
-            { label: 'Demandes',        value: 2  },
-            { label: 'Formations',      value: 5  },
+            { label: 'Jours de congé', value: congesSoldes.congesPayes.restant },
+            { label: 'Demandes',        value: congesSoldes.enAttente.count },
+            { label: 'Formations',      value: 0 },
           ].map(({ label, value }) => (
             <div key={label} style={{ textAlign: 'center' }}>
               <p style={{ fontSize: 24, fontWeight: 800, lineHeight: 1 }}>
@@ -281,14 +333,21 @@ export default function DashboardPage() {
               <Clock size={16} style={{ color: '#007FE1' }} />
               <p style={{ fontSize: 14, fontWeight: 700, color: '#1c1917' }}>Activité récente</p>
             </div>
-            <button style={{ fontSize: 12, fontWeight: 600, color: '#007FE1', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+            <button
+              onClick={() => navigate('/conges')}
+              style={{ fontSize: 12, fontWeight: 600, color: '#007FE1', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
               Tout voir
             </button>
           </div>
           <ul style={{ listStyle: 'none', margin: 0, padding: '0 20px' }}>
-            {activities.map((a, i) => (
-              <ActivityRow key={i} {...a} />
-            ))}
+            {activities.length === 0 ? (
+              <li style={{ padding: '32px 0', textAlign: 'center' }}>
+                <p style={{ fontSize: 13, color: '#a8a29e', margin: 0 }}>Aucune activité récente</p>
+              </li>
+            ) : (
+              activities.map((a, i) => <ActivityRow key={i} {...a} />)
+            )}
           </ul>
         </motion.div>
 
