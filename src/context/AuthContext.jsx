@@ -1,47 +1,50 @@
 import { createContext, useContext, useState } from 'react'
+import { authService } from '../services/authService'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [pendingUser, setPendingUser] = useState(null) // utilisateur en attente de 2FA
+  // Session persistée dans localStorage : { user, pendingUser, token }
+  const [session, setSession] = useState(() => authService.getSession())
+
+  const user = session?.user ?? null
+  const pendingUser = session?.pendingUser ?? null // utilisateur en attente de 2FA
 
   // Connexion avec identifiant + mot de passe
-  const login = (userData) => {
-    // Si l'utilisateur a activé la 2FA, on le met en attente
-    if (userData.twoFactorEnabled) {
-      setPendingUser(userData)
-      return { requires2FA: true }
-    }
-    setUser(userData)
-    return { requires2FA: false }
+  const login = async (identifier, password) => {
+    const result = await authService.login(identifier, password)
+    setSession(authService.getSession())
+    return result
   }
 
   // Validation du code 2FA
-  const verify2FA = (code) => {
-    // TODO: valider le code avec l'API backend
-    // Pour l'instant on simule une validation réussie
-    if (code.length === 6) {
-      setUser(pendingUser)
-      setPendingUser(null)
-      return true
-    }
-    return false
+  const verify2FA = async (code) => {
+    const result = await authService.verify2FA(code)
+    setSession(authService.getSession())
+    return result.success
+  }
+
+  // Régénère le QR code de configuration 2FA en attente
+  const refresh2FASetup = async () => {
+    const result = await authService.refreshSetup(pendingUser)
+    setSession(authService.getSession())
+    return result
   }
 
   // Mise à jour du profil utilisateur
   const updateUser = (updatedData) => {
-    setUser(prev => ({ ...prev, ...updatedData }))
+    const next = authService.updateUser(updatedData)
+    if (next) setSession(next)
   }
 
   // Déconnexion
-  const logout = () => {
-    setUser(null)
-    setPendingUser(null)
+  const logout = async () => {
+    await authService.logout()
+    setSession(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, pendingUser, login, verify2FA, updateUser, logout }}>
+    <AuthContext.Provider value={{ user, pendingUser, login, verify2FA, refresh2FASetup, updateUser, logout }}>
       {children}
     </AuthContext.Provider>
   )

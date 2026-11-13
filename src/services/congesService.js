@@ -123,7 +123,7 @@ export function calculerJoursOuvres(dateDebutStr, dateFinStr, demiJourneeDebut =
   return Math.max(0, jours)
 }
 
-const STORAGE_KEY_DEMANDES = 'dayoch_demandes_conges_v2'
+const STORAGE_KEY_DEMANDES = 'dayoch_demandes_conges_v3'
 
 const INITIAL_DEMANDES = []
 

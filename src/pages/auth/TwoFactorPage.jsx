@@ -1,23 +1,64 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShieldCheck, Lock } from 'lucide-react'
+import { ShieldCheck, Copy, Check, ArrowRight } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
+import { motion } from 'motion/react'
 import { useAuth } from '../../context/AuthContext'
+import { buildOtpauthUri } from '../../utils/totp'
+
+const EASE = [0.22, 1, 0.36, 1]
+const CURRENT_YEAR = new Date().getFullYear()
 
 function TwoFactorPage() {
   const navigate = useNavigate()
-  const { pendingUser, verify2FA } = useAuth()
+  const { pendingUser, user, verify2FA, refresh2FASetup } = useAuth()
 
   const [code, setCode] = useState(['', '', '', '', '', ''])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [copied, setCopied] = useState(false)
   const inputRefs = useRef([])
 
-  // Rediriger si aucun utilisateur en attente de 2FA
+  const requiresSetup = Boolean(pendingUser?.requiresSetup)
+  const setupSecret = pendingUser?.setupSecret || ''
+  const otpauthUri = setupSecret
+    ? buildOtpauthUri({
+        secret: setupSecret,
+        accountName: pendingUser?.email || pendingUser?.matricule || 'utilisateur',
+      })
+    : ''
+
+  const handleCopySecret = async () => {
+    try {
+      await navigator.clipboard.writeText(setupSecret)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setError('Copie impossible. Sélectionnez la clé manuellement.')
+    }
+  }
+
+  const handleRefresh = async () => {
+    setError('')
+    setCode(['', '', '', '', '', ''])
+    setRefreshing(true)
+    try {
+      await refresh2FASetup()
+      inputRefs.current[0]?.focus()
+    } catch {
+      setError('Impossible de régénérer le QR code. Veuillez réessayer.')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  // Rediriger si aucun utilisateur en attente de 2FA (et pas déjà connecté)
   useEffect(() => {
-    if (!pendingUser) {
+    if (!pendingUser && !user) {
       navigate('/login', { replace: true })
     }
-  }, [pendingUser, navigate])
+  }, [pendingUser, user, navigate])
 
   // Focus automatique sur le premier champ au chargement
   useEffect(() => {
@@ -70,17 +111,20 @@ function TwoFactorPage() {
     setError('')
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800))
-
-      const success = verify2FA(codeToVerify)
+      const success = await verify2FA(codeToVerify)
       if (success) {
         navigate('/dashboard', { replace: true })
       } else {
-        setError("Code incorrect. Vérifiez votre application d'authentification.")
+        const suffix = setupSecret ? setupSecret.slice(-4) : null
+        setError(
+          suffix
+            ? `Code incorrect. Dans 2FAS, utilisez l'entrée …${suffix} et vérifiez l'heure de votre téléphone.`
+            : "Code incorrect. Vérifiez le code affiché dans 2FAS et l'heure de votre téléphone.",
+        )
         setCode(['', '', '', '', '', ''])
         inputRefs.current[0]?.focus()
       }
-    } catch (err) {
+    } catch {
       setError('Une erreur est survenue. Veuillez réessayer.')
     } finally {
       setLoading(false)
@@ -93,77 +137,267 @@ function TwoFactorPage() {
   }
 
   const isComplete = code.every((digit) => digit !== '')
+  const disabled = !isComplete || loading
+
+  const inputBorder = (digit) => (error ? '#fca5a5' : digit ? '#007FE1' : '#e7e5e4')
+  const inputBackground = (digit) => (error ? '#fef2f2' : digit ? '#F0F8FF' : 'white')
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#EEF2F7' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#fafaf9' }}>
 
-      {/* Header */}
-      <header className="bg-white border-b-2 border-[#007FE1]">
-        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-2">
-            <span className="text-[#007FE1] text-2xl font-bold tracking-tight">Dayo</span>
-            <div className="w-px h-8 bg-gray-300 mx-1" />
-            <div className="flex flex-col leading-tight">
-              <span className="text-[#007FE1] text-[10px] font-semibold tracking-widest uppercase">Assurance</span>
-              <span className="text-[#007FE1] text-[10px] font-semibold tracking-widest uppercase">Bénin</span>
-            </div>
-          </div>
+      {/* ── PANNEAU GAUCHE décoratif ── */}
+      <div
+        className="hidden lg:flex lg:w-1/2 flex-col justify-between items-center text-center p-12 relative overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #00509A 0%, #007FE1 60%, #0066C0 100%)' }}
+      >
+        <div style={{ position: 'absolute', right: -80, top: -80, width: 320, height: 320, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+        <div style={{ position: 'absolute', left: -60, bottom: -60, width: 240, height: 240, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+        <div style={{ position: 'absolute', right: 120, bottom: 120, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
 
-          {/* Espace sécurisé */}
-          <div className="flex items-center gap-1.5 text-sm text-[#007FE1]">
-            <Lock className="w-4 h-4" />
-            <span>Espace assuré sécurisé</span>
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
+          backgroundSize: '60px 60px',
+        }} />
+
+        {/* Logo */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: EASE }}
+          style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12 }}
+        >
+          <div style={{
+            width: 44, height: 44, borderRadius: 14,
+            background: 'rgba(255,255,255,0.2)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+          }}>
+            <span style={{ fontSize: 20, fontWeight: 800, color: 'white', fontStyle: 'italic', fontFamily: 'Lora, Georgia, serif' }}>D</span>
           </div>
+          <div>
+            <p style={{ fontWeight: 700, color: 'white', fontSize: 15, fontFamily: 'Lora, Georgia, serif', letterSpacing: '-0.3px' }}>DayoPI</p>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>Puls Infra</p>
+          </div>
+        </motion.div>
+
+        {/* Contenu principal */}
+        <div style={{ position: 'relative', maxWidth: 500, width: '100%' }}>
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.15, ease: EASE }}
+            style={{ fontSize: 12, fontWeight: 700, color: 'rgba(147,197,253,0.9)', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: 16 }}
+          >
+            Sécurité du compte
+          </motion.p>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.25, ease: EASE }}
+            style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 40, fontWeight: 700, color: 'white', lineHeight: 1.2, marginBottom: 20 }}
+          >
+            {requiresSetup ? (
+              <>Activez votre <span style={{ color: '#93C5FD', fontStyle: 'italic' }}>double authentification.</span></>
+            ) : (
+              <>Vérifiez votre <span style={{ color: '#93C5FD', fontStyle: 'italic' }}>identité.</span></>
+            )}
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.4, ease: EASE }}
+            style={{ fontSize: 16, color: 'rgba(219,234,254,0.85)', lineHeight: 1.7, maxWidth: 380, margin: '0 auto 28px' }}
+          >
+            {requiresSetup
+              ? 'Une étape obligatoire pour les rôles à privilèges. Scannez le QR code avec 2FAS et validez votre accès.'
+              : 'Saisissez le code temporaire généré par 2FAS pour finaliser votre connexion sécurisée.'}
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.55, ease: EASE }}
+            style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}
+          >
+            {['2FAS', 'TOTP · 30 s', '6 chiffres'].map((label) => (
+              <span
+                key={label}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  background: 'rgba(255,255,255,0.15)',
+                  backdropFilter: 'blur(8px)',
+                  borderRadius: 999,
+                  padding: '6px 14px',
+                  fontSize: 12, fontWeight: 600, color: 'white',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                }}
+              >
+                {label}
+              </span>
+            ))}
+          </motion.div>
         </div>
-      </header>
 
-      {/* Contenu principal */}
-      <main className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
+        {/* Footer */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.7, ease: EASE }}
+          style={{ position: 'relative', fontSize: 12, color: 'rgba(147,197,253,0.7)' }}
+        >
+          © {CURRENT_YEAR} Groupe Dayo — Connexion sécurisée SSL
+        </motion.p>
+      </div>
 
-          {/* Carte */}
-          <div className="bg-white rounded-2xl shadow-sm border border-dashed border-[#007FE1]/40 overflow-hidden">
+      {/* ── PANNEAU DROIT : vérification ── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
 
-            {/* Barre bleue top */}
-            <div className="h-1 bg-[#007FE1]" />
+        {/* Header mobile */}
+        <header
+          className="lg:hidden"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px 24px',
+            borderBottom: '1px solid #e7e5e4',
+            background: 'white',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 10,
+              background: 'linear-gradient(135deg, #007FE1, #00509A)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span style={{ color: 'white', fontWeight: 700, fontSize: 14 }}>D</span>
+            </div>
+            <span style={{ fontWeight: 700, color: '#1c1917' }}>DayoPI</span>
+          </div>
+          <span style={{ fontSize: 12, color: '#a8a29e' }}>Espace sécurisé</span>
+        </header>
 
-            <div className="p-8">
-              {/* Icône */}
-              <div className="w-12 h-12 bg-[#007FE1] rounded-xl flex items-center justify-center mb-5">
-                <ShieldCheck className="w-6 h-6 text-white" />
+        {/* Contenu centré */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 24px' }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1, ease: EASE }}
+            style={{ width: '100%', maxWidth: 400 }}
+          >
+            {/* Titre */}
+            <div style={{ marginBottom: 28, textAlign: 'center' }}>
+              <div className="hidden lg:flex" style={{ justifyContent: 'center', marginBottom: 22 }}>
+                <div style={{
+                  width: 52, height: 52, borderRadius: 16,
+                  background: 'linear-gradient(135deg, #007FE1, #00509A)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 8px 24px rgba(0,127,225,0.3)',
+                }}>
+                  <ShieldCheck size={24} style={{ color: 'white' }} />
+                </div>
               </div>
-
-              {/* Badge */}
-              <div className="flex items-center gap-1.5 mb-3">
-                <span className="w-2 h-2 rounded-full bg-[#007FE1] inline-block" />
-                <span className="text-xs font-semibold text-[#007FE1] tracking-widest uppercase">Double authentification</span>
-              </div>
-
-              {/* Titre */}
-              <h1 className="text-2xl font-bold text-[#1D1D1B] mb-2">
-                Vérifiez votre connexion
-              </h1>
-              <p className="text-sm text-[#696969] mb-6">
-                Ouvrez votre application d'authentification et saisissez le code à 6 chiffres associé à votre compte Dayo Assurance.
+              <p style={{
+                fontSize: 11, fontWeight: 700, color: '#007FE1',
+                textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8,
+              }}>
+                {requiresSetup ? 'Activation obligatoire' : 'Double authentification'}
               </p>
+              <h1 style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 28, fontWeight: 700, color: '#1c1917', letterSpacing: '-0.5px' }}>
+                {requiresSetup ? 'Activez la 2FA' : 'Vérification 2FA'}
+              </h1>
+              <p style={{ marginTop: 8, fontSize: 15, color: '#78716c', lineHeight: 1.5 }}>
+                {requiresSetup
+                  ? 'Scannez le QR code avec 2FAS pour sécuriser votre compte.'
+                  : 'Saisissez le code à 6 chiffres généré par 2FAS.'}
+              </p>
+            </div>
 
-              {/* Erreur */}
+            {/* Carte formulaire */}
+            <div style={{
+              background: 'white',
+              borderRadius: 20,
+              border: '1px solid #e7e5e4',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.06)',
+              padding: 28,
+            }}>
               {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-                  <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  <p className="text-sm text-red-600">{error}</p>
+                <div style={{
+                  marginBottom: 16, padding: '10px 14px', borderRadius: 10,
+                  background: '#fef2f2', border: '1px solid #fecaca',
+                  color: '#dc2626', fontSize: 13, fontWeight: 600,
+                }}>
+                  {error}
+                </div>
+              )}
+
+              {requiresSetup && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{
+                    display: 'flex', justifyContent: 'center',
+                    padding: 12, marginBottom: 12,
+                    background: '#fafaf9', border: '1px solid #e7e5e4', borderRadius: 14,
+                  }}>
+                    {otpauthUri && <QRCodeSVG value={otpauthUri} size={190} level="M" />}
+                  </div>
+                  <p style={{ fontSize: 12, color: '#78716c', margin: '0 0 8px', textAlign: 'center' }}>
+                    Scannez avec 2FAS, ou saisissez la clé manuellement :
+                  </p>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '9px 12px', borderRadius: 10,
+                    background: '#F0F8FF', border: '1px solid #D7E9FF',
+                  }}>
+                    <code style={{ flex: 1, fontSize: 11, color: '#1c1917', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                      {setupSecret}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={handleCopySecret}
+                      aria-label="Copier la clé"
+                      style={{
+                        border: 'none', background: 'transparent', cursor: 'pointer',
+                        color: copied ? '#16a34a' : '#007FE1', display: 'flex', padding: 2,
+                      }}
+                    >
+                      {copied ? <Check size={15} /> : <Copy size={15} />}
+                    </button>
+                  </div>
+
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    gap: 10, marginTop: 10,
+                  }}>
+                    <p style={{ margin: 0, fontSize: 11, color: '#78716c' }}>
+                      Entrée 2FAS : <strong style={{ color: '#1c1917' }}>…{setupSecret ? setupSecret.slice(-4) : '----'}</strong>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleRefresh}
+                      disabled={refreshing}
+                      style={{
+                        background: 'transparent', border: 'none', padding: 0,
+                        fontSize: 11, fontWeight: 600, color: refreshing ? '#a8a29e' : '#007FE1',
+                        cursor: refreshing ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {refreshing ? 'Régénération…' : 'Régénérer le QR'}
+                    </button>
+                  </div>
                 </div>
               )}
 
               <form onSubmit={handleSubmit}>
-                {/* Label */}
-                <p className="text-sm font-medium text-[#1D1D1B] mb-3">Code à 6 chiffres</p>
+                <p style={{
+                  fontSize: 12, fontWeight: 600, color: '#78716c',
+                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10,
+                }}>
+                  Code à 6 chiffres
+                </p>
 
-                {/* 6 cases */}
-                <div className="flex gap-2 mb-2" onPaste={handlePaste}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }} onPaste={handlePaste}>
                   {code.map((digit, index) => (
                     <input
                       key={index}
@@ -174,90 +408,95 @@ function TwoFactorPage() {
                       value={digit}
                       onChange={(e) => handleChange(index, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(index, e)}
-                      className={`
-                        w-full h-12 text-center text-lg font-bold rounded-xl border-2 transition-all duration-200
-                        focus:outline-none focus:ring-2 focus:ring-[#007FE1] focus:border-[#007FE1]
-                        ${digit
-                          ? 'border-[#007FE1] bg-[#D9EBFF] text-[#007FE1]'
-                          : 'border-[#D7D7D7] bg-white text-[#1D1D1B]'
-                        }
-                        ${error ? 'border-red-400 bg-red-50' : ''}
-                      `}
                       aria-label={`Chiffre ${index + 1}`}
+                      style={{
+                        width: '100%', height: 52, boxSizing: 'border-box',
+                        textAlign: 'center', fontSize: 20, fontWeight: 700,
+                        borderRadius: 12,
+                        border: `1.5px solid ${inputBorder(digit)}`,
+                        background: inputBackground(digit),
+                        color: digit ? '#007FE1' : '#1c1917',
+                        outline: 'none',
+                        transition: 'border-color 0.15s, box-shadow 0.15s',
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#007FE1'
+                        e.target.style.boxShadow = '0 0 0 3px rgba(0,127,225,0.12)'
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = inputBorder(digit)
+                        e.target.style.boxShadow = 'none'
+                      }}
                     />
                   ))}
                 </div>
 
-                {/* Hint */}
-                <p className="text-xs text-[#9B9B9A] mb-5">
-                  Utilisez le code actuellement affiché dans l'application.
+                <p style={{ fontSize: 11, color: '#a8a29e', margin: '0 0 20px', lineHeight: 1.5 }}>
+                  {requiresSetup
+                    ? "Scannez le QR code, puis saisissez le code généré. Vérifiez que l'heure de votre téléphone est synchronisée automatiquement."
+                    : "Utilisez le code actuellement affiché dans l'application. Vérifiez que l'heure de votre téléphone est synchronisée automatiquement."}
                 </p>
 
-                {/* Bouton */}
                 <button
                   type="submit"
-                  disabled={!isComplete || loading}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#007FE1] hover:bg-[#006AC0] text-white font-medium rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={disabled}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    padding: '13px 20px', fontSize: 14, fontWeight: 700, color: 'white',
+                    background: disabled ? '#a8a29e' : 'linear-gradient(135deg, #007FE1, #0066C0)',
+                    border: 'none', borderRadius: 12,
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    boxShadow: disabled ? 'none' : '0 4px 16px rgba(0,127,225,0.3)',
+                    transition: 'transform 0.15s, box-shadow 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!disabled) {
+                      e.currentTarget.style.transform = 'translateY(-1px)'
+                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,127,225,0.38)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'none'
+                    e.currentTarget.style.boxShadow = disabled ? 'none' : '0 4px 16px rgba(0,127,225,0.3)'
+                  }}
                 >
                   {loading ? (
                     <>
-                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                      </svg>
-                      Vérification...
+                      <span
+                        className="animate-spin"
+                        style={{
+                          width: 16, height: 16, display: 'inline-block', borderRadius: '50%',
+                          border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white',
+                        }}
+                      />
+                      Vérification…
                     </>
                   ) : (
                     <>
-                      Vérifier et continuer
-                      <span className="text-lg leading-none">→</span>
+                      {requiresSetup ? 'Activer et continuer' : 'Vérifier et continuer'}
+                      <ArrowRight size={16} />
                     </>
                   )}
                 </button>
               </form>
-
-              {/* Séparateur */}
-              <div className="border-t border-[#EBEBEB] my-5" />
-
-              {/* Code de récupération */}
-              <div className="text-center">
-                <p className="text-xs text-[#9B9B9A] mb-1">
-                  Vous n'avez pas accès à votre application ?
-                </p>
-                <button
-                  type="button"
-                  className="text-sm text-[#007FE1] hover:underline font-medium transition-colors"
-                >
-                  Utiliser un code de récupération
-                </button>
-              </div>
             </div>
-          </div>
 
-          {/* Retour connexion */}
-          <div className="text-center mt-4">
-            <button
-              type="button"
-              onClick={() => navigate('/login')}
-              className="text-sm text-[#007FE1] hover:underline transition-colors border border-dashed border-[#007FE1]/40 px-4 py-1.5 rounded-lg"
-            >
-              ← Retour à la connexion
-            </button>
-          </div>
+            {/* Retour connexion */}
+            <div style={{ textAlign: 'center', marginTop: 20 }}>
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                style={{
+                  background: 'transparent', border: 'none', padding: 0,
+                  fontSize: 13, fontWeight: 600, color: '#007FE1', cursor: 'pointer',
+                }}
+              >
+                ← Retour à la connexion
+              </button>
+            </div>
+          </motion.div>
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="py-4 px-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-[#9B9B9A]">
-          <span>© 2026 Dayo Assurance Bénin</span>
-          <div className="flex items-center gap-4">
-            <span className="hover:text-[#007FE1] cursor-pointer transition-colors">Confidentialité</span>
-            <span className="text-[#D7D7D7]">|</span>
-            <span className="hover:text-[#007FE1] cursor-pointer transition-colors">Besoin d'aide ?</span>
-          </div>
-        </div>
-      </footer>
+      </div>
     </div>
   )
 }

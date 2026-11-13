@@ -18,6 +18,7 @@ const menuConfig = {
   manager: [
     { label: 'Tableau de bord', path: '/dashboard',   icon: LayoutDashboard },
     { label: 'Congés',          path: '/conges',       icon: Calendar },
+    { label: 'Sollicitations',  path: '/sollicitations', icon: MessageSquare },
     { label: 'Fournitures',     path: '/fournitures',  icon: Package },
     { label: 'Évaluations',     path: '/evaluations',  icon: ClipboardCheck },
     { label: 'Formations',      path: '/formations',   icon: GraduationCap },
@@ -35,6 +36,7 @@ const menuConfig = {
   super_admin: [
     { label: 'Tableau de bord', path: '/dashboard',    icon: LayoutDashboard },
     { label: 'Congés',          path: '/conges',       icon: Calendar },
+    { label: 'Sollicitations',  path: '/sollicitations', icon: MessageSquare },
     { label: 'Gestion du stock', path: '/stock',       icon: Warehouse },
     { label: 'Utilisateurs',    path: '/utilisateurs', icon: Users },
     { label: 'Organigramme',    path: '/organigramme', icon: Briefcase },
@@ -95,8 +97,8 @@ export default function Sidebar({ onLogout }) {
             <span style={{ color: 'white', fontWeight: 800, fontSize: 18, fontStyle: 'italic', fontFamily: 'Lora, Georgia, serif' }}>D</span>
           </div>
           <div>
-            <p style={{ fontWeight: 700, fontSize: 14, color: '#1c1917', fontFamily: 'Lora, Georgia, serif', letterSpacing: '-0.3px' }}>Dayo CH</p>
-            <p style={{ fontSize: 10, color: '#a8a29e', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>Capital Humain</p>
+            <p style={{ fontWeight: 700, fontSize: 14, color: '#1c1917', fontFamily: 'Lora, Georgia, serif', letterSpacing: '-0.3px' }}>DayoPI</p>
+            <p style={{ fontSize: 10, color: '#a8a29e', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>Puls Infra</p>
           </div>
         </div>
 

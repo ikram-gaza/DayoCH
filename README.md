@@ -1,6 +1,6 @@
-# Dayo CH
+# DayoPI
 
-Application web de gestion du Capital Humain pour le Groupe Dayo.
+**Puls Infra** — Application web de gestion du Capital Humain pour le Groupe Dayo.
 
 ## Stack Technique
 
@@ -59,6 +59,6 @@ npm run lint
 ## Authentification
 
 - Connexion avec email/mot de passe
-- 2FA optionnelle (Google Authenticator)
+- 2FA optionnelle (2FAS / TOTP)
 - 4 rôles : employe, manager, gestionnaire_stock, super_admin
 

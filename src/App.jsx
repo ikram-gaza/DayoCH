@@ -4,20 +4,37 @@ import TwoFactorPage from './pages/auth/TwoFactorPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
 import OrganigrammePage from './pages/admin/OrganigrammePage'
 import FilialesPage from './pages/admin/FilialesPage'
+import UtilisateursPage from './pages/admin/UtilisateursPage'
 import ProfilPage from './pages/profil/ProfilPage'
 import CongesPage from './pages/conges/CongesPage'
+import SollicitationsPage from './pages/sollicitations/SollicitationsPage'
 import FournituresPage from './pages/fournitures/FournituresPage'
 import StockPage from './pages/fournitures/StockPage'
 import TracabilitePage from './pages/fournitures/TracabilitePage'
 import DemandesStockPage from './pages/fournitures/DemandesStockPage'
 import AlertesStockPage from './pages/fournitures/AlertesStockPage'
+import EquipePage from './pages/equipe/EquipePage'
 import MainLayout from './components/layout/MainLayout'
 import { AuthProvider, useAuth } from './context/AuthContext'
+
+const ALL_ROLES = ['employe', 'manager', 'gestionnaire_stock', 'super_admin']
+const STAFF_ROLES = ['employe', 'manager', 'super_admin']
+const STOCK_ROLES = ['gestionnaire_stock', 'super_admin']
+const MANAGER_ROLES = ['manager', 'super_admin']
+const ADMIN_ROLES = ['super_admin']
 
 // Route protégée : redirige vers /login si non connecté
 function PrivateRoute({ children }) {
   const { user } = useAuth()
   return user ? children : <Navigate to="/login" replace />
+}
+
+// Route protégée par rôle : redirige vers /dashboard si le rôle n'est pas autorisé
+function RoleRoute({ roles, children }) {
+  const { user } = useAuth()
+  if (!user) return <Navigate to="/login" replace />
+  if (roles && !roles.includes(user.role)) return <Navigate to="/dashboard" replace />
+  return children
 }
 
 function App() {
@@ -39,27 +56,27 @@ function App() {
             }
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            
+            <Route path="dashboard" element={<RoleRoute roles={ALL_ROLES}><DashboardPage /></RoleRoute>} />
+
             {/* Modules opérationnels */}
-            <Route path="conges" element={<CongesPage />} />
-            <Route path="fournitures" element={<FournituresPage />} />
-            <Route path="stock" element={<StockPage />} />
-            <Route path="tracabilite" element={<TracabilitePage />} />
-            <Route path="demandes-fournitures" element={<DemandesStockPage />} />
-            <Route path="alertes" element={<AlertesStockPage />} />
-            <Route path="profil" element={<ProfilPage />} />
-            <Route path="organigramme" element={<OrganigrammePage />} />
-            <Route path="filiales" element={<FilialesPage />} />
+            <Route path="conges" element={<RoleRoute roles={STAFF_ROLES}><CongesPage /></RoleRoute>} />
+            <Route path="sollicitations" element={<RoleRoute roles={STAFF_ROLES}><SollicitationsPage /></RoleRoute>} />
+            <Route path="fournitures" element={<RoleRoute roles={STAFF_ROLES}><FournituresPage /></RoleRoute>} />
+            <Route path="stock" element={<RoleRoute roles={STOCK_ROLES}><StockPage /></RoleRoute>} />
+            <Route path="tracabilite" element={<RoleRoute roles={STOCK_ROLES}><TracabilitePage /></RoleRoute>} />
+            <Route path="demandes-fournitures" element={<RoleRoute roles={STOCK_ROLES}><DemandesStockPage /></RoleRoute>} />
+            <Route path="alertes" element={<RoleRoute roles={STOCK_ROLES}><AlertesStockPage /></RoleRoute>} />
+            <Route path="profil" element={<RoleRoute roles={ALL_ROLES}><ProfilPage /></RoleRoute>} />
+            <Route path="organigramme" element={<RoleRoute roles={ADMIN_ROLES}><OrganigrammePage /></RoleRoute>} />
+            <Route path="filiales" element={<RoleRoute roles={ADMIN_ROLES}><FilialesPage /></RoleRoute>} />
 
             {/* TODO: Routes à implémenter */}
-            <Route path="sollicitations" element={<div className="p-6">Module Sollicitations (à venir)</div>} />
-            <Route path="formations" element={<div className="p-6">Module Formations (à venir)</div>} />
-            <Route path="evaluations" element={<div className="p-6">Module Évaluations (à venir)</div>} />
-            <Route path="equipe" element={<div className="p-6">Mon Équipe (à venir)</div>} />
-            <Route path="utilisateurs" element={<div className="p-6">Gestion Utilisateurs (à venir)</div>} />
-            <Route path="statistiques" element={<div className="p-6">Statistiques (à venir)</div>} />
-            <Route path="parametres" element={<div className="p-6">Paramètres (à venir)</div>} />
+            <Route path="formations" element={<RoleRoute roles={STAFF_ROLES}><div className="p-6">Module Formations (à venir)</div></RoleRoute>} />
+            <Route path="evaluations" element={<RoleRoute roles={MANAGER_ROLES}><div className="p-6">Module Évaluations (à venir)</div></RoleRoute>} />
+            <Route path="equipe" element={<RoleRoute roles={MANAGER_ROLES}><EquipePage /></RoleRoute>} />
+            <Route path="utilisateurs" element={<RoleRoute roles={ADMIN_ROLES}><UtilisateursPage /></RoleRoute>} />
+            <Route path="statistiques" element={<RoleRoute roles={ADMIN_ROLES}><div className="p-6">Statistiques (à venir)</div></RoleRoute>} />
+            <Route path="parametres" element={<RoleRoute roles={ADMIN_ROLES}><div className="p-6">Paramètres (à venir)</div></RoleRoute>} />
           </Route>
 
           {/* Redirection par défaut */}

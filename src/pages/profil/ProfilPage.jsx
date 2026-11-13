@@ -5,6 +5,8 @@ import {
   Shield, Bell, Smartphone,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { authService } from '../../services/authService'
+import TwoFactorSetupModal from '../../components/profil/TwoFactorSetupModal'
 
 const ROLE_LABELS = {
   super_admin: 'Super Administrateur',
@@ -150,9 +152,11 @@ export default function ProfilPage() {
   const [saving, setSaving] = useState(false)
   const [savingPwd, setSavingPwd] = useState(false)
   const [pwdError, setPwdError] = useState('')
+  const [show2FASetup, setShow2FASetup] = useState(false)
 
   const initials = `${user?.prenom?.[0] || ''}${user?.nom?.[0] || ''}`.toUpperCase()
   const roleStyle = ROLE_COLORS[user?.role] || ROLE_COLORS.employe
+  const is2FAMandatory = ['super_admin', 'manager'].includes(user?.role)
 
   const showToast = (msg) => {
     setToast(msg)
@@ -193,6 +197,32 @@ export default function ProfilPage() {
     setSavingPwd(false)
     setPasswords({ ancien: '', nouveau: '', confirmation: '' })
     showToast('Mot de passe modifié avec succès')
+  }
+
+  // Activation / désactivation de la double authentification
+  const handleToggle2FA = async () => {
+    if (is2FAMandatory && user?.twoFactorEnabled) {
+      showToast('La double authentification est obligatoire pour votre rôle.')
+      return
+    }
+    if (!user?.twoFactorEnabled) {
+      setShow2FASetup(true)
+      return
+    }
+    if (!window.confirm('Désactiver la double authentification ?')) return
+    try {
+      await authService.disable2FA(user)
+      updateUser({ twoFactorEnabled: false })
+      showToast('Double authentification désactivée.')
+    } catch {
+      showToast('Impossible de désactiver la double authentification.')
+    }
+  }
+
+  const handle2FAEnabled = () => {
+    updateUser({ twoFactorEnabled: true })
+    setShow2FASetup(false)
+    showToast('Double authentification activée.')
   }
 
   return (
@@ -336,18 +366,42 @@ export default function ProfilPage() {
               </p>
             </div>
             <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Smartphone size={14} style={{ color: '#007FE1' }} />
-                  <span style={{ fontSize: 13, color: '#1c1917', fontWeight: 600 }}>Authentification 2FA</span>
+                  <div>
+                    <p style={{ fontSize: 13, color: '#1c1917', fontWeight: 600, margin: 0 }}>Authentification 2FA</p>
+                    <p style={{ fontSize: 11, color: '#a8a29e', margin: 0 }}>
+                      {is2FAMandatory
+                        ? (user?.twoFactorEnabled ? 'Obligatoire pour votre rôle' : 'Activation obligatoire pour votre rôle')
+                        : (user?.twoFactorEnabled ? 'Un code sera demandé à la connexion' : 'Activer pour sécuriser votre compte')}
+                    </p>
+                  </div>
                 </div>
-                <span style={{
-                  padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                  background: user?.twoFactorEnabled ? '#dcfce7' : '#fef2f2',
-                  color: user?.twoFactorEnabled ? '#16a34a' : '#dc2626',
-                }}>
-                  {user?.twoFactorEnabled ? 'Activé' : 'Désactivé'}
-                </span>
+                <button
+                  type="button"
+                  onClick={handleToggle2FA}
+                  disabled={is2FAMandatory && user?.twoFactorEnabled}
+                  aria-pressed={Boolean(user?.twoFactorEnabled)}
+                  aria-label={
+                    is2FAMandatory && user?.twoFactorEnabled
+                      ? 'Double authentification obligatoire'
+                      : (user?.twoFactorEnabled ? 'Désactiver la double authentification' : 'Activer la double authentification')
+                  }
+                  style={{
+                    width: 40, height: 22, borderRadius: 999, border: 'none', padding: 0,
+                    cursor: is2FAMandatory && user?.twoFactorEnabled ? 'not-allowed' : 'pointer',
+                    position: 'relative', flexShrink: 0,
+                    background: user?.twoFactorEnabled ? '#007FE1' : '#d6d3d1',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <span style={{
+                    position: 'absolute', top: 2, left: user?.twoFactorEnabled ? 20 : 2,
+                    width: 18, height: 18, borderRadius: '50%', background: 'white',
+                    transition: 'left 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  }} />
+                </button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -529,6 +583,14 @@ export default function ProfilPage() {
 
       {/* Toast */}
       {toast && <Toast message={toast} />}
+
+      {show2FASetup && (
+        <TwoFactorSetupModal
+          user={user}
+          onClose={() => setShow2FASetup(false)}
+          onEnabled={handle2FAEnabled}
+        />
+      )}
     </div>
   )
 }

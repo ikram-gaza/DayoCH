@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { authService } from '../../services/authService'
 import { motion, AnimatePresence } from 'motion/react'
 
 const EASE = [0.22, 1, 0.36, 1]
@@ -40,18 +41,11 @@ export default function LoginPage() {
 
     setLoading(true)
     try {
-      await new Promise((r) => setTimeout(r, 900))
-      const mockUser = {
-        id: 1, nom: 'KOTCHOFA', prenom: 'Boris',
-        email: 'boris.kotchofa@dayo.africa', matricule: 'DG-001',
-        role: 'super_admin', filiale: 'Dayo Group',
-        twoFactorEnabled: identifier === '2fa',
-      }
-      const result = login(mockUser)
+      const result = await login(identifier, password)
       if (result.requires2FA) navigate('/2fa')
       else navigate('/dashboard')
-    } catch {
-      setError('Identifiant ou mot de passe incorrect.')
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Identifiant ou mot de passe incorrect.')
     } finally {
       setLoading(false)
     }
@@ -62,7 +56,7 @@ export default function LoginPage() {
 
       {/* ── PANNEAU GAUCHE décoratif ── */}
       <div
-        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden"
+        className="hidden lg:flex lg:w-1/2 flex-col justify-between items-center text-center p-12 relative overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #00509A 0%, #007FE1 60%, #0066C0 100%)' }}
       >
         {/* Cercles décoratifs */}
@@ -94,13 +88,13 @@ export default function LoginPage() {
             <span style={{ fontSize: 20, fontWeight: 800, color: 'white', fontStyle: 'italic', fontFamily: 'Lora, Georgia, serif' }}>D</span>
           </div>
           <div>
-            <p style={{ fontWeight: 700, color: 'white', fontSize: 15, fontFamily: 'Lora, Georgia, serif', letterSpacing: '-0.3px' }}>Dayo CH</p>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>Capital Humain</p>
+            <p style={{ fontWeight: 700, color: 'white', fontSize: 15, fontFamily: 'Lora, Georgia, serif', letterSpacing: '-0.3px' }}>DayoPI</p>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>Puls Infra</p>
           </div>
         </motion.div>
 
         {/* Contenu principal gauche */}
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative', maxWidth: 500, width: '100%' }}>
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -124,7 +118,7 @@ export default function LoginPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.4, ease: EASE }}
-            style={{ fontSize: 16, color: 'rgba(219,234,254,0.85)', lineHeight: 1.7, maxWidth: 380, marginBottom: 28 }}
+            style={{ fontSize: 16, color: 'rgba(219,234,254,0.85)', lineHeight: 1.7, maxWidth: 380, margin: '0 auto 28px' }}
           >
             Congés, formations, évaluations et organigramme — tout en un seul espace sécurisé pour vos équipes en Afrique.
           </motion.p>
@@ -134,7 +128,7 @@ export default function LoginPage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.55, ease: EASE }}
-            style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}
+            style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}
           >
             {FILIALES.map(({ code, flag, name }) => (
               <span
@@ -184,7 +178,7 @@ export default function LoginPage() {
             }}>
               <span style={{ color: 'white', fontWeight: 700, fontSize: 14 }}>D</span>
             </div>
-            <span style={{ fontWeight: 700, color: '#1c1917' }}>Dayo CH</span>
+            <span style={{ fontWeight: 700, color: '#1c1917' }}>DayoPI</span>
           </div>
           <span style={{ fontSize: 12, color: '#a8a29e' }}>Espace sécurisé</span>
         </header>
@@ -214,7 +208,7 @@ export default function LoginPage() {
                 Connexion
               </h1>
               <p style={{ marginTop: 8, fontSize: 15, color: '#78716c' }}>
-                Accédez à votre espace Dayo Assurance
+                Accédez à votre espace DayoPI
               </p>
             </div>
 
@@ -365,6 +359,22 @@ export default function LoginPage() {
                     )}
                   </button>
                 </form>
+
+                {authService.isMock && (
+                  <div style={{
+                    marginTop: 18, padding: '10px 14px', borderRadius: 10,
+                    background: '#fafaf9', border: '1px dashed #e7e5e4',
+                    fontSize: 11, color: '#78716c', lineHeight: 1.6,
+                  }}>
+                    <strong style={{ color: '#57534e' }}>Mode démonstration</strong> — identifiants :{' '}
+                    <code style={{ color: '#007FE1' }}>manager</code>,{' '}
+                    <code style={{ color: '#007FE1' }}>employe</code>,{' '}
+                    <code style={{ color: '#007FE1' }}>stock</code>,{' '}
+                    <code style={{ color: '#007FE1' }}>super_admin</code> (mot de passe libre). Les rôles{' '}
+                    <code style={{ color: '#007FE1' }}>super_admin</code> et{' '}
+                    <code style={{ color: '#007FE1' }}>manager</code> doivent configurer la 2FA avec 2FAS dès la connexion.
+                  </div>
+                )}
               </div>
             </div>
 

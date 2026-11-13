@@ -1,5 +1,5 @@
 {
-  "name": "dayoch",
+  "name": "dayopi",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -17,6 +17,7 @@
     "axios": "^1.21.0",
     "lucide-react": "^0.468.0",
     "motion": "^14.10.1",
+    "qrcode.react": "^4.2.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.5",
