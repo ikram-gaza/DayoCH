@@ -1,8 +1,10 @@
 import { Handle, Position } from 'reactflow'
 import { User, Mail, Phone, Briefcase } from 'lucide-react'
+import { libelleFiliales } from '../../utils/organigramme'
 
 function EmployeeNode({ data }) {
   const { employee, onClick } = data
+  const filiales = libelleFiliales(employee)
 
   return (
     <div
@@ -36,7 +38,7 @@ function EmployeeNode({ data }) {
       <div className="space-y-1.5">
         <div className="flex items-center gap-2 text-xs text-[#696969]">
           <Briefcase className="w-3 h-3 flex-shrink-0" />
-          <span className="truncate">{employee.filiale}</span>
+          <span className="truncate" title={filiales}>{filiales || '—'}</span>
         </div>
         <div className="flex items-center gap-2 text-xs text-[#696969]">
           <Mail className="w-3 h-3 flex-shrink-0" />

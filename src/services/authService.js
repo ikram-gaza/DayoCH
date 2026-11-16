@@ -1,30 +1,12 @@
-import axios from 'axios'
 import { generateSecret, verifyTOTP, buildOtpauthUri } from '../utils/totp'
+import { reprendreSession, surSessionPerdue } from './apiClient'
+import { apiAuth } from './apiAuth'
+import { jetons } from './jetons'
+import { normaliserUtilisateur } from './authMappers'
 
-// URL de base de l'API backend (à configurer selon l'environnement)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-
-// Tant que le backend n'est pas branché, un mock local est utilisé par défaut.
-// Passer VITE_USE_MOCK_AUTH=false pour appeler la vraie API.
 const USE_MOCK = import.meta.env.VITE_USE_MOCK_AUTH !== 'false'
 
 const SESSION_KEY = 'dayoch_session_v1'
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
-
-// Intercepteur pour ajouter le token JWT à chaque requête
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -34,27 +16,27 @@ const MOCK_USERS = {
   'super_admin': {
     id: 1, nom: 'KOTCHOFA', prenom: 'Boris',
     email: 'boris.kotchofa@dayo.africa', matricule: 'DG-001',
-    role: 'super_admin', filiale: 'Dayo Group', poste: 'Directeur Général',
+    role: 'super_admin', filiale: 'Dayo Group', filialeId: null, poste: 'Directeur Général',
   },
   'admin': {
     id: 1, nom: 'KOTCHOFA', prenom: 'Boris',
     email: 'boris.kotchofa@dayo.africa', matricule: 'DG-001',
-    role: 'super_admin', filiale: 'Dayo Group', poste: 'Directeur Général',
+    role: 'super_admin', filiale: 'Dayo Group', filialeId: null, poste: 'Directeur Général',
   },
   'manager': {
     id: 2, nom: 'DIALLO', prenom: 'Amadou',
     email: 'amadou.diallo@dayo.africa', matricule: 'BEN-001',
-    role: 'manager', filiale: 'Dayo Bénin', poste: 'Directeur Capital Humain',
+    role: 'manager', filiale: 'Dayo Bénin', filialeId: 'dayo-benin', poste: 'Directeur Capital Humain',
   },
   'employe': {
     id: 5, nom: 'TRAORE', prenom: 'Aïcha',
     email: 'aicha.traore@dayo.africa', matricule: 'BFA-001',
-    role: 'employe', filiale: 'Dayo Burkina Faso', poste: 'Chargée de Clientèle',
+    role: 'employe', filiale: 'Dayo Burkina Faso', filialeId: 'dayo-burkina', poste: 'Chargée de Clientèle',
   },
   'stock': {
     id: 8, nom: 'COULIBALY', prenom: 'Ibrahim',
     email: 'ibrahim.coulibaly@dayo.africa', matricule: 'BEN-002',
-    role: 'gestionnaire_stock', filiale: 'Dayo Bénin', poste: 'Gestionnaire de stock',
+    role: 'gestionnaire_stock', filiale: 'Dayo Bénin', filialeId: 'dayo-benin', poste: 'Gestionnaire de stock',
   },
 }
 
@@ -66,7 +48,10 @@ const PRIVILEGED_ROLES = ['super_admin', 'manager']
 function readSession() {
   try {
     const raw = localStorage.getItem(SESSION_KEY)
-    return raw ? JSON.parse(raw) : null
+    if (!raw) return null
+    const session = JSON.parse(raw)
+    if (session.user) session.user = normaliserUtilisateur(session.user)
+    return session
   } catch {
     return null
   }
@@ -82,14 +67,28 @@ function writeSession(session) {
 
 function clearSession() {
   localStorage.removeItem(SESSION_KEY)
-  localStorage.removeItem('token')
+  jetons.clear()
 }
 
-function persistAuthenticated(user, token) {
-  const session = { user, pendingUser: null, token: token || null }
+function persistAuthenticated(user, tokens = {}) {
+  if (tokens.accessToken || tokens.refreshToken) {
+    jetons.save(tokens.accessToken, tokens.refreshToken)
+  }
+  const session = { user, pendingUser: null }
   writeSession(session)
-  if (token) localStorage.setItem('token', token)
   return session
+}
+
+async function finaliserConnexion(data) {
+  const accessToken = data.accessToken || data.token || null
+  const refreshToken = data.refreshToken || null
+  if (accessToken) jetons.save(accessToken, refreshToken)
+
+  let user = normaliserUtilisateur(data.utilisateur || data.user)
+  const profil = await apiAuth.profil().catch(() => null)
+  if (profil) user = { ...user, ...profil }
+
+  return persistAuthenticated(user)
 }
 
 // ── Secrets TOTP (mode mock) ──
@@ -164,23 +163,50 @@ export const authService = {
   getSession: readSession,
   saveSession: writeSession,
 
+  canRestoreSession: () => !USE_MOCK && Boolean(jetons.refresh()),
+
+  restoreSession: async () => {
+    if (USE_MOCK) return readSession()
+    if (!jetons.refresh()) return readSession()
+
+    const ok = await reprendreSession()
+    if (!ok) {
+      clearSession()
+      return null
+    }
+
+    const profil = await apiAuth.profil().catch(() => null)
+    if (!profil) {
+      clearSession()
+      return null
+    }
+
+    const session = { user: profil, pendingUser: null }
+    writeSession(session)
+    return session
+  },
+
+  onSessionLost: (callback) => surSessionPerdue(callback),
+
   // Connexion avec email ou matricule + mot de passe
   login: async (identifier, password) => {
     if (!USE_MOCK) {
-      const { data } = await api.post('/auth/login', { identifier, password })
+      const data = await apiAuth.connexion(identifier, password)
+      const challengeToken = data.challengeToken || null
+      const requires2FA = Boolean(data.twoFactorRequired || data.requires2FA || challengeToken)
 
-      // Le backend peut demander une vérification 2FA
-      if (data.requires2FA) {
-        const rawPending = data.pendingUser || data.user || null
-        const requiresSetup = Boolean(data.requiresSetup)
-        const pendingUser = requiresSetup
-          ? { ...rawPending, requiresSetup: true, setupSecret: data.secret }
-          : rawPending
-        writeSession({ user: null, pendingUser, token: null })
-        return { requires2FA: true, requiresSetup, user: null, pendingUser }
+      if (requires2FA) {
+        const setupSecret = data.secret || data.setupSecret || null
+        const requiresSetup = Boolean(
+          (data.requiresSetup || data.twoFactorSetupRequired) && setupSecret,
+        )
+        const base = normaliserUtilisateur(data.utilisateur || data.user || {})
+        const pendingUser = { ...base, challengeToken, requiresSetup, setupSecret }
+        writeSession({ user: null, pendingUser })
+        return { requires2FA: true, requiresSetup, user: null, pendingUser, challengeToken }
       }
 
-      const session = persistAuthenticated(data.user, data.token)
+      const session = await finaliserConnexion(data)
       return { requires2FA: false, ...session }
     }
 
@@ -198,7 +224,7 @@ export const authService = {
     const storedSecret = getSecret(base)
     const mandatory = PRIVILEGED_ROLES.includes(base.role)
     const twoFactorEnabled = mandatory || cle === '2fa' || Boolean(storedSecret)
-    const user = { ...base, twoFactorEnabled }
+    const user = normaliserUtilisateur({ ...base, twoFactorEnabled })
 
     if (twoFactorEnabled) {
       const requiresSetup = !storedSecret
@@ -222,11 +248,11 @@ export const authService = {
       const pendingUser = requiresSetup
         ? { ...user, requiresSetup: true, setupSecret }
         : { ...user, requiresSetup: false }
-      writeSession({ user: null, pendingUser, token: null })
+      writeSession({ user: null, pendingUser })
       return { requires2FA: true, requiresSetup, user: null, pendingUser }
     }
 
-    const session = persistAuthenticated(user, `mock-token-${user.id}`)
+    const session = persistAuthenticated(user)
     return { requires2FA: false, ...session }
   },
 
@@ -234,16 +260,17 @@ export const authService = {
   verify2FA: async (code) => {
     if (!USE_MOCK) {
       const session = readSession()
-      const { data } = await api.post('/auth/verify-2fa', {
-        userId: session?.pendingUser?.id,
-        code,
-      })
+      const challengeToken = session?.pendingUser?.challengeToken
 
-      if (data.token) {
-        const authenticated = persistAuthenticated(data.user, data.token)
-        return { success: true, ...authenticated }
+      if (!challengeToken) {
+        throw new Error('Session 2FA expirée. Veuillez vous reconnecter.')
       }
-      return { success: false }
+
+      const data = await apiAuth.verifier2fa(challengeToken, code)
+      if (!data?.accessToken && !data?.token) return { success: false }
+
+      const authenticated = await finaliserConnexion(data)
+      return { success: true, ...authenticated }
     }
 
     // ── Mode mock ──
@@ -266,14 +293,14 @@ export const authService = {
     const user = { ...pending, twoFactorEnabled: true }
     delete user.requiresSetup
     delete user.setupSecret
-    const authenticated = persistAuthenticated(user, `mock-token-${user.id}`)
+    const authenticated = persistAuthenticated(user)
     return { success: true, ...authenticated }
   },
 
   // ── Double authentification TOTP (2FAS, etc.) ──
   prepare2FA: async (user) => {
     if (!USE_MOCK) {
-      const { data } = await api.post('/auth/2fa/setup', { userId: user?.id })
+      const data = await apiAuth.preparer2FA(user?.id)
       return { secret: data.secret, otpauthUri: data.otpauthUri }
     }
 
@@ -289,7 +316,7 @@ export const authService = {
 
   refreshSetup: async (user) => {
     if (!USE_MOCK) {
-      const { data } = await api.post('/auth/2fa/setup', { userId: user?.id })
+      const data = await apiAuth.preparer2FA(user?.id)
       return { secret: data.secret, otpauthUri: data.otpauthUri }
     }
 
@@ -313,7 +340,7 @@ export const authService = {
 
   enable2FA: async (user, secret, code) => {
     if (!USE_MOCK) {
-      const { data } = await api.post('/auth/2fa/enable', { userId: user?.id, secret, code })
+      const data = await apiAuth.activer2FA(user?.id, secret, code)
       return Boolean(data?.success)
     }
 
@@ -324,14 +351,14 @@ export const authService = {
 
   disable2FA: async (user) => {
     if (!USE_MOCK) {
-      await api.post('/auth/2fa/disable', { userId: user?.id })
+      await apiAuth.desactiver2FA(user?.id)
       return
     }
     setSecret(user, null)
     clearPendingSecret(user)
   },
 
-  has2FA: (user) => Boolean(getSecret(user)),
+  has2FA: (user) => (USE_MOCK ? Boolean(getSecret(user)) : Boolean(user?.twoFactorEnabled)),
 
   // Mise à jour des données utilisateur dans la session
   updateUser: (updates) => {
@@ -345,14 +372,9 @@ export const authService = {
   // Déconnexion
   logout: async () => {
     if (!USE_MOCK) {
-      try {
-        await api.post('/auth/logout')
-      } catch {
-        // Token déjà invalide : on nettoie quand même la session locale
-      }
+      const refresh = jetons.refresh()
+      if (refresh) await apiAuth.deconnexion(refresh).catch(() => null)
     }
     clearSession()
   },
 }
-
-export default api

@@ -2,13 +2,15 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Calendar, Package, MessageSquare,
   GraduationCap, BarChart3, Users, Briefcase,
-  ClipboardCheck, Settings, LogOut, Warehouse, User,
+  ClipboardCheck, Settings, LogOut, Warehouse, User, Contact, BarChart3 as ChartIcon,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
 const menuConfig = {
   employe: [
     { label: 'Tableau de bord', path: '/dashboard',     icon: LayoutDashboard },
+    { label: 'Agents',          path: '/agents',         icon: Users },
+    { label: 'Trombinoscope',   path: '/trombinoscope',  icon: Contact },
     { label: 'Mes congés',      path: '/conges',         icon: Calendar },
     { label: 'Fournitures',     path: '/fournitures',    icon: Package },
     { label: 'Sollicitations',  path: '/sollicitations', icon: MessageSquare },
@@ -17,16 +19,22 @@ const menuConfig = {
   ],
   manager: [
     { label: 'Tableau de bord', path: '/dashboard',   icon: LayoutDashboard },
+    { label: 'Pilotage',        path: '/pilotage',    icon: ChartIcon },
+    { label: 'Agents',          path: '/agents',       icon: Users },
+    { label: 'Trombinoscope',   path: '/trombinoscope', icon: Contact },
     { label: 'Congés',          path: '/conges',       icon: Calendar },
     { label: 'Sollicitations',  path: '/sollicitations', icon: MessageSquare },
     { label: 'Fournitures',     path: '/fournitures',  icon: Package },
     { label: 'Évaluations',     path: '/evaluations',  icon: ClipboardCheck },
     { label: 'Formations',      path: '/formations',   icon: GraduationCap },
     { label: 'Mon équipe',      path: '/equipe',       icon: Users },
+    { label: 'Organigramme',    path: '/organigramme', icon: Briefcase },
     { label: 'Mon Profil',      path: '/profil',       icon: User },
   ],
   gestionnaire_stock: [
     { label: 'Tableau de bord',  path: '/dashboard',            icon: LayoutDashboard },
+    { label: 'Agents',           path: '/agents',               icon: Users },
+    { label: 'Trombinoscope',    path: '/trombinoscope',        icon: Contact },
     { label: 'Gestion du stock', path: '/stock',                icon: Warehouse },
     { label: 'Traçabilité',      path: '/tracabilite',          icon: Package },
     { label: 'Demandes',         path: '/demandes-fournitures', icon: MessageSquare },
@@ -35,6 +43,9 @@ const menuConfig = {
   ],
   super_admin: [
     { label: 'Tableau de bord', path: '/dashboard',    icon: LayoutDashboard },
+    { label: 'Pilotage',        path: '/pilotage',     icon: ChartIcon },
+    { label: 'Agents',          path: '/agents',       icon: Users },
+    { label: 'Trombinoscope',   path: '/trombinoscope', icon: Contact },
     { label: 'Congés',          path: '/conges',       icon: Calendar },
     { label: 'Sollicitations',  path: '/sollicitations', icon: MessageSquare },
     { label: 'Gestion du stock', path: '/stock',       icon: Warehouse },

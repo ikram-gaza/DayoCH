@@ -1,14 +1,19 @@
 import { useState } from 'react'
-import { Bell, Search } from 'lucide-react'
+import { Bell, ChevronDown, Search } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
+import { useAuth } from '../../context/AuthContext'
+import { getFiliales } from '../../config/filiales'
 
 const EASE = [0.22, 1, 0.36, 1]
 
 const mockNotifications = []
 
 export default function Header() {
+  const { user, filialeCourante, estCompteGroupe, changerFiliale } = useAuth()
   const [showNotif, setShowNotif] = useState(false)
   const unread = mockNotifications.filter((n) => n.unread).length
+  const filiales = getFiliales()
+  const filialeAffichee = filiales.find((filiale) => filiale.id === filialeCourante)?.nom || user?.filiale
 
   return (
     <header style={{
@@ -45,6 +50,37 @@ export default function Header() {
             }}
           />
         </div>
+
+        {estCompteGroupe ? (
+          <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+            <span className="sr-only">Filiale active</span>
+            <select
+              value={filialeCourante || ''}
+              onChange={(evenement) => changerFiliale(evenement.target.value || null)}
+              style={{
+                appearance: 'none',
+                height: 36,
+                padding: '0 34px 0 12px',
+                borderRadius: 10,
+                border: '1px solid #e7e5e4',
+                background: '#f5f5f4',
+                color: '#292524',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {filiales.map((filiale) => (
+                <option key={filiale.id} value={filiale.id}>{filiale.nom}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} style={{ position: 'absolute', right: 11, color: '#78716c', pointerEvents: 'none' }} />
+          </label>
+        ) : (
+          <span style={{ display: 'inline-flex', alignItems: 'center', height: 36, padding: '0 12px', borderRadius: 10, background: '#E5F2FD', color: '#00509A', fontSize: 12, fontWeight: 700 }}>
+            {filialeAffichee}
+          </span>
+        )}
 
         {/* Cloche */}
         <div style={{ position: 'relative' }}>

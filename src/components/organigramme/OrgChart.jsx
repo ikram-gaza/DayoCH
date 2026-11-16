@@ -18,7 +18,7 @@ const nodeTypes = {
 }
 
 // Composant interne qui peut utiliser useReactFlow (doit être dans ReactFlowProvider)
-function OrgChartInner({ employees, onSelectEmployee, onChangeResponsable, zoom = 1 }) {
+function OrgChartInner({ employees, onSelectEmployee, onChangeResponsable, zoom = 1, lectureSeule = false }) {
   const { zoomTo } = useReactFlow()
   const [isDragging, setIsDragging] = useState(false)
 
@@ -27,37 +27,58 @@ function OrgChartInner({ employees, onSelectEmployee, onChangeResponsable, zoom 
     zoomTo(zoom, { duration: 300 })
   }, [zoom, zoomTo])
   
-  // Construire l'arbre hiérarchique
+  // Construire l'arbre hiérarchique, avec une ou plusieurs racines (forêt)
   const buildHierarchy = useCallback(() => {
     const nodes = []
     const edges = []
     const levels = {}
+    const ids = new Set(employees.map(emp => emp.id))
+    const seen = new Set()
+    const queue = []
 
-    // Trouver la racine (sans responsable)
-    const root = employees.find(emp => !emp.responsableId)
-    if (!root) return { nodes, edges }
+    const roots = employees.filter(
+      emp => !emp.responsableId || !ids.has(emp.responsableId)
+    )
 
-    // BFS pour construire les niveaux
-    const queue = [{ employee: root, level: 0, parentX: 400 }]
-    levels[0] = []
+    roots.forEach((root) => {
+      if (seen.has(root.id)) return
+      seen.add(root.id)
+      queue.push({ employee: root, level: 0 })
+    })
 
     while (queue.length > 0) {
-      const { employee, level, parentX } = queue.shift()
+      const { employee, level } = queue.shift()
 
       if (!levels[level]) levels[level] = []
       levels[level].push(employee)
 
-      // Trouver les subordonnés directs
-      const subordinates = employees.filter(emp => emp.responsableId === employee.id)
-      
-      subordinates.forEach((sub, idx) => {
-        queue.push({
-          employee: sub,
-          level: level + 1,
-          parentX,
+      employees.forEach((subordonne) => {
+        if (subordonne.responsableId !== employee.id || seen.has(subordonne.id)) return
+
+        seen.add(subordonne.id)
+        queue.push({ employee: subordonne, level: level + 1 })
+        edges.push({
+          id: `e${employee.id}-${subordonne.id}`,
+          source: String(employee.id),
+          target: String(subordonne.id),
+          type: 'smoothstep',
+          animated: false,
+          style: { stroke: '#007FE1', strokeWidth: 2 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: '#007FE1',
+          },
         })
       })
     }
+
+    // Les employés restants (cycle ou parent absent) restent visibles à la racine
+    employees.forEach((emp) => {
+      if (seen.has(emp.id)) return
+      seen.add(emp.id)
+      if (!levels[0]) levels[0] = []
+      levels[0].push(emp)
+    })
 
     // Calculer les positions
     Object.keys(levels).forEach((lvl) => {
@@ -78,22 +99,6 @@ function OrgChartInner({ employees, onSelectEmployee, onChangeResponsable, zoom 
             onClick: () => onSelectEmployee(emp),
           },
         })
-
-        // Créer l'arête vers le parent
-        if (emp.responsableId) {
-          edges.push({
-            id: `e${emp.responsableId}-${emp.id}`,
-            source: String(emp.responsableId),
-            target: String(emp.id),
-            type: 'smoothstep',
-            animated: false,
-            style: { stroke: '#007FE1', strokeWidth: 2 },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              color: '#007FE1',
-            },
-          })
-        }
       })
     })
 
@@ -108,6 +113,11 @@ function OrgChartInner({ employees, onSelectEmployee, onChangeResponsable, zoom 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
 
+  useEffect(() => {
+    setNodes(initialNodes)
+    setEdges(initialEdges)
+  }, [initialNodes, initialEdges, setNodes, setEdges])
+
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
@@ -121,7 +131,8 @@ function OrgChartInner({ employees, onSelectEmployee, onChangeResponsable, zoom 
   const onNodeDragStop = useCallback(
     (event, node) => {
       setIsDragging(false)
-      
+      if (lectureSeule) return
+
       const draggedEmployeeId = parseInt(node.id)
       
       // Trouver le nœud le plus proche (potentiel nouveau responsable)
@@ -157,7 +168,7 @@ function OrgChartInner({ employees, onSelectEmployee, onChangeResponsable, zoom 
         }
       }
     },
-    [nodes, employees, onChangeResponsable]
+    [nodes, employees, onChangeResponsable, lectureSeule]
   )
 
   // Vérifier si le changement créerait une boucle
@@ -180,7 +191,7 @@ function OrgChartInner({ employees, onSelectEmployee, onChangeResponsable, zoom 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       {/* Indicateur drag */}
-      {isDragging && (
+      {isDragging && !lectureSeule && (
         <div
           style={{
             position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
@@ -200,8 +211,10 @@ function OrgChartInner({ employees, onSelectEmployee, onChangeResponsable, zoom 
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onNodeDragStart={onNodeDragStart}
-        onNodeDragStop={onNodeDragStop}
+        onNodeDragStart={lectureSeule ? undefined : onNodeDragStart}
+        onNodeDragStop={lectureSeule ? undefined : onNodeDragStop}
+        nodesDraggable={!lectureSeule}
+        nodesConnectable={false}
         nodeTypes={nodeTypes}
         fitView
         minZoom={0.3}

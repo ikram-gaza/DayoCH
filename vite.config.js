@@ -9,7 +9,13 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
-    host: true,  // écoute sur 0.0.0.0 (toutes interfaces)
+    host: true,
     port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
   },
 })

@@ -1,6 +1,9 @@
-import { User, Mail, Phone, Briefcase, MapPin } from 'lucide-react'
+import { User, Mail, Briefcase } from 'lucide-react'
+import { libelleFiliales } from '../../utils/organigramme'
 
 function EmployeeCard({ employee, onClick }) {
+  const filiales = libelleFiliales(employee)
+
   return (
     <div
       onClick={onClick}
@@ -28,7 +31,7 @@ function EmployeeCard({ employee, onClick }) {
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs text-[#696969]">
               <Briefcase className="w-3 h-3 flex-shrink-0" />
-              <span className="truncate">{employee.filiale}</span>
+              <span className="truncate" title={filiales}>{filiales || '—'}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-[#696969]">
               <Mail className="w-3 h-3 flex-shrink-0" />

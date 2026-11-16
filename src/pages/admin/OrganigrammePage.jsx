@@ -1,29 +1,31 @@
 import { useState, useCallback } from 'react'
-import { Users, UserPlus, Search, Download, Filter, ZoomIn, ZoomOut, RefreshCw, History } from 'lucide-react'
+import { Users, UserPlus, Search, Filter, ZoomIn, ZoomOut, RefreshCw, History } from 'lucide-react'
 import OrgChart from '../../components/organigramme/OrgChart'
 import EmployeeModal from '../../components/organigramme/EmployeeModal'
 import HistoriqueModal from '../../components/organigramme/HistoriqueModal'
+import OrganigrammeGroupe from '../../components/organigramme/OrganigrammeGroupe'
 import { useAuth } from '../../context/AuthContext'
+import { USE_MOCK_DATA } from '../../config/donnees'
+import { apiOrganigramme } from '../../services/apiOrganigramme'
+import { exporterTableau } from '../../utils/export'
+import ExportButtons from '../../components/common/ExportButtons'
 import { getFiliales } from '../../config/filiales'
-
-const mockEmployees = [
-  { id: 1, nom: 'KOTCHOFA', prenom: 'Boris', poste: 'Directeur Général', filiale: 'Dayo Bénin', photo: null, responsableId: null, email: 'boris.kotchofa@dayo.africa', telephone: '+229 97 00 00 00', matricule: 'DG-001' },
-  { id: 2, nom: 'DIALLO', prenom: 'Amadou', poste: 'Directeur CH', filiale: 'Dayo Bénin', photo: null, responsableId: 1, email: 'amadou.diallo@dayo.africa', telephone: '+229 97 00 00 01', matricule: 'BEN-001' },
-  { id: 3, nom: 'KANE', prenom: 'Fatou', poste: 'Directrice Commerciale', filiale: 'Dayo Guinée', photo: null, responsableId: 1, email: 'fatou.kane@dayo.africa', telephone: '+224 62 00 00 02', matricule: 'GIN-001' },
-  { id: 4, nom: 'MENSAH', prenom: 'Koffi', poste: 'Manager Équipe Commerciale', filiale: 'Dayo Guinée', photo: null, responsableId: 3, email: 'koffi.mensah@dayo.africa', telephone: '+224 62 00 00 03', matricule: 'GIN-002' },
-  { id: 5, nom: 'TRAORE', prenom: 'Aïcha', poste: 'Chargée de Clientèle', filiale: 'Dayo Burkina Faso', photo: null, responsableId: 1, email: 'aicha.traore@dayo.africa', telephone: '+226 70 00 00 04', matricule: 'BFA-001' },
-  { id: 6, nom: 'OUEDRAOGO', prenom: 'Jean', poste: 'Chargé de Clientèle', filiale: 'Dayo Burkina Faso', photo: null, responsableId: 5, email: 'jean.ouedraogo@dayo.africa', telephone: '+226 70 00 00 05', matricule: 'BFA-002' },
-  { id: 7, nom: 'SORO', prenom: 'Marie', poste: 'Responsable Formation', filiale: "Dayo Côte d'Ivoire", photo: null, responsableId: 1, email: 'marie.soro@dayo.africa', telephone: '+225 07 00 00 06', matricule: 'CIV-001' },
-]
+import { MOCK_EMPLOYEES } from '../../config/organigrammeDemo'
+import { appartientFiliale, normaliserFiliales } from '../../utils/organigramme'
 
 function OrganigrammePage() {
-  const { user } = useAuth()
-  const [employees, setEmployees] = useState(mockEmployees)
+  const { user, peut } = useAuth()
+  const peutModifier = peut('agent:update')
+  const filialesConfig = getFiliales()
+  const filiales = filialesConfig.map(f => f.nom)
+  const filialeInitiale = filiales.includes(user?.filiale) ? user.filiale : (filiales[0] || '')
+  const [vue, setVue] = useState('equipe')
+  const [employees, setEmployees] = useState(MOCK_EMPLOYEES)
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [showHistorique, setShowHistorique] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterFiliale, setFilterFiliale] = useState('all')
+  const [filterFiliale, setFilterFiliale] = useState(filialeInitiale)
   const [zoom, setZoom] = useState(1)
   const [historique, setHistorique] = useState([
     { id: 1, date: '2026-11-05T14:30:00', action: 'changement_hierarchie', employeNom: 'Aïcha TRAORE', employePoste: 'Chargée de Clientèle', ancienResponsable: 'Fatou KANE', nouveauResponsable: 'Koffi MENSAH', details: "Réorganisation de l'équipe commerciale", auteur: 'Boris KOTCHOFA' },
@@ -31,19 +33,17 @@ function OrganigrammePage() {
     { id: 3, date: '2026-11-03T16:45:00', action: 'modification', employeNom: 'Marie SORO', employePoste: 'Responsable Formation', details: 'Mise à jour des coordonnées', auteur: 'Amadou DIALLO' },
   ])
 
-  const filialesConfig = getFiliales()
-  const filiales = filialesConfig.map(f => f.nom)
+  const employesFiliale = employees.filter(emp => appartientFiliale(emp, filterFiliale))
 
-  const filteredEmployees = employees.filter(emp => {
-    const matchSearch = searchTerm === '' ||
-      emp.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.poste.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchFiliale = filterFiliale === 'all' || emp.filiale === filterFiliale
-    return matchSearch && matchFiliale
-  })
+  const filteredEmployees = employesFiliale.filter(emp => (
+    searchTerm === '' ||
+    emp.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    emp.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    emp.poste.toLowerCase().includes(searchTerm.toLowerCase())
+  ))
 
   const handleChangeResponsable = useCallback((employeeId, newResponsableId) => {
+    if (!peutModifier) return
     const employee = employees.find(e => e.id === employeeId)
     const newResponsable = employees.find(e => e.id === newResponsableId)
     const oldResponsable = employees.find(e => e.id === employee?.responsableId)
@@ -59,28 +59,71 @@ function OrganigrammePage() {
         details: "Modification via drag & drop", auteur: `${user.prenom} ${user.nom}`,
       }, ...prev])
     }
-  }, [employees, user])
+  }, [employees, user, peutModifier])
 
-  const handleSelectEmployee = (employee) => { setSelectedEmployee(employee); setShowModal(true) }
-  const handleAddEmployee = () => { setSelectedEmployee(null); setShowModal(true) }
+  const handleSelectEmployee = (employee) => {
+    if (!peutModifier) return
+    setSelectedEmployee(employee)
+    setShowModal(true)
+  }
+  const handleAddEmployee = () => {
+    if (!peutModifier) return
+    setSelectedEmployee({ filiale: filterFiliale })
+    setShowModal(true)
+  }
+
+  const exporter = async (format) => {
+    if (!USE_MOCK_DATA) {
+      const filialeId = filialesConfig.find((filiale) => filiale.nom === filterFiliale)?.id
+      return apiOrganigramme.exporter({ filialeId, inclureAgents: true, seulementActifs: true }, format)
+    }
+    exporterTableau({
+      nom: `organigramme-${filterFiliale.toLowerCase().replaceAll(' ', '-')}`,
+      titre: `Organigramme de ${filterFiliale}`,
+      colonnes: [
+        { cle: 'matricule', libelle: 'Matricule' },
+        { cle: 'nom', libelle: 'Collaborateur' },
+        { cle: 'poste', libelle: 'Poste' },
+        { cle: 'filiale', libelle: 'Filiale' },
+        { cle: 'responsable', libelle: 'Responsable' },
+      ],
+      lignes: filteredEmployees.map((employe) => ({
+        matricule: employe.matricule || '',
+        nom: `${employe.prenom} ${employe.nom}`,
+        poste: employe.poste || '',
+        filiale: employe.filiale || '',
+        responsable: employees.find((item) => item.id === employe.responsableId)?.nom || 'Aucun',
+      })),
+      format,
+    })
+  }
 
   const handleSaveEmployee = (updatedEmployee) => {
-    if (updatedEmployee.id) {
-      const oldEmployee = employees.find(e => e.id === updatedEmployee.id)
-      if (oldEmployee.responsableId !== updatedEmployee.responsableId) {
+    if (!peutModifier) return
+    const employe = normaliserFiliales(updatedEmployee)
+
+    if (employe.id) {
+      const oldEmployee = employees.find(e => e.id === employe.id)
+      if (oldEmployee.responsableId !== employe.responsableId) {
         const oldResp = employees.find(e => e.id === oldEmployee.responsableId)
-        const newResp = employees.find(e => e.id === updatedEmployee.responsableId)
+        const newResp = employees.find(e => e.id === employe.responsableId)
         setHistorique(prev => [{
           id: prev.length + 1, date: new Date().toISOString(), action: 'changement_hierarchie',
-          employeNom: `${updatedEmployee.prenom} ${updatedEmployee.nom}`, employePoste: updatedEmployee.poste,
+          employeNom: `${employe.prenom} ${employe.nom}`, employePoste: employe.poste,
           ancienResponsable: oldResp ? `${oldResp.prenom} ${oldResp.nom}` : 'Aucun',
           nouveauResponsable: newResp ? `${newResp.prenom} ${newResp.nom}` : 'Aucun',
           details: 'Modification du responsable hiérarchique', auteur: `${user.prenom} ${user.nom}`,
         }, ...prev])
       }
-      setEmployees(prev => prev.map(emp => emp.id === updatedEmployee.id ? updatedEmployee : emp))
+      setEmployees(prev => prev.map(emp => emp.id === employe.id ? employe : emp))
     } else {
-      const newEmployee = { ...updatedEmployee, id: Math.max(...employees.map(e => e.id)) + 1, matricule: `DAY-${String(employees.length + 1).padStart(3, '0')}` }
+      const nouvelId = employees.reduce((max, emp) => Math.max(max, Number(emp.id) || 0), 0) + 1
+      const nouveauxMembres = employees.filter(e => e.filiale === employe.filiale).length + 1
+      const newEmployee = {
+        ...employe,
+        id: nouvelId,
+        matricule: `DAY-${String(nouveauxMembres).padStart(3, '0')}`,
+      }
       setEmployees(prev => [...prev, newEmployee])
       setHistorique(prev => [{
         id: prev.length + 1, date: new Date().toISOString(), action: 'creation',
@@ -91,20 +134,20 @@ function OrganigrammePage() {
     setShowModal(false)
   }
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#1c1917', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-            <Users size={24} style={{ color: '#007FE1', flexShrink: 0 }} />
-            Organigramme
-          </h1>
-          <p style={{ fontSize: 13, color: '#a8a29e', marginTop: 4 }}>
-            {filteredEmployees.length} collaborateurs · Glissez-déposez pour réorganiser
-          </p>
-        </div>
+  const entete = (
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+      <div>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#1c1917', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+          <Users size={24} style={{ color: '#007FE1', flexShrink: 0 }} />
+          Organigramme
+        </h1>
+        <p style={{ fontSize: 13, color: '#a8a29e', marginTop: 4 }}>
+          {vue === 'equipe'
+            ? `${filteredEmployees.length} collaborateurs · ${filterFiliale}`
+            : 'Organisation du groupe · Lecture seule'}
+        </p>
+      </div>
+      {vue === 'equipe' && peutModifier && (
         <button
           onClick={handleAddEmployee}
           style={{
@@ -120,7 +163,53 @@ function OrganigrammePage() {
           <UserPlus size={15} />
           Ajouter un collaborateur
         </button>
+      )}
+    </div>
+  )
+
+  const onglets = (
+    <div style={{ display: 'flex', gap: 8 }}>
+      {[
+        { id: 'equipe', label: 'Par filiale' },
+        { id: 'groupe', label: 'Organigramme du groupe' },
+      ].map((onglet) => (
+        <button
+          key={onglet.id}
+          type="button"
+          onClick={() => setVue(onglet.id)}
+          style={{
+            padding: '8px 14px',
+            borderRadius: 10,
+            border: vue === onglet.id ? '1px solid #007FE1' : '1px solid #e7e5e4',
+            background: vue === onglet.id ? '#E5F2FD' : 'white',
+            color: vue === onglet.id ? '#007FE1' : '#78716c',
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          {onglet.label}
+        </button>
+      ))}
+    </div>
+  )
+
+  if (vue === 'groupe') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {entete}
+        {onglets}
+        <OrganigrammeGroupe />
       </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      {/* ── Header ── */}
+      {entete}
+      {onglets}
 
       {/* ── Toolbar ── */}
       <div style={{
@@ -151,12 +240,12 @@ function OrganigrammePage() {
           <select
             value={filterFiliale}
             onChange={e => setFilterFiliale(e.target.value)}
+            disabled={filiales.length === 0}
             style={{
               padding: '7px 10px', fontSize: 13, border: '1px solid #e7e5e4',
               borderRadius: 8, outline: 'none', background: '#fafaf9', color: '#1c1917', cursor: 'pointer',
             }}
           >
-            <option value="all">Toutes les filiales</option>
             {filiales.map(f => <option key={f} value={f}>{f}</option>)}
           </select>
         </div>
@@ -208,41 +297,53 @@ function OrganigrammePage() {
           <History size={14} />
           Historique
         </button>
-        <button
-          onClick={() => alert('Export en cours de développement')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '7px 12px', fontSize: 13, fontWeight: 600,
-            border: '1px solid #007FE1', borderRadius: 8, background: 'white',
-            color: '#007FE1', cursor: 'pointer', transition: 'all 0.15s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = '#E5F2FD'}
-          onMouseLeave={e => e.currentTarget.style.background = 'white'}
-        >
-          <Download size={14} />
-          Exporter
-        </button>
+        <ExportButtons formats={['pdf', 'xlsx']} onExport={exporter} />
       </div>
 
       {/* ── Canvas organigramme ── */}
-      <div style={{
-        height: 560, background: 'white', borderRadius: 16,
-        border: '1px solid #e7e5e4', overflow: 'hidden',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-      }}>
-        <OrgChart
-          employees={filteredEmployees}
-          onSelectEmployee={handleSelectEmployee}
-          onChangeResponsable={handleChangeResponsable}
-          zoom={zoom}
-        />
-      </div>
+      {filteredEmployees.length === 0 ? (
+        <div style={{
+          background: 'white', borderRadius: 16, border: '1px dashed #d6d3d1',
+          padding: '48px 24px', textAlign: 'center',
+        }}>
+          <span style={{
+            width: 56, height: 56, borderRadius: 16, background: '#f5f5f4',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            color: '#a8a29e', marginBottom: 14,
+          }}>
+            <Users size={24} />
+          </span>
+          <p style={{ fontSize: 15, fontWeight: 700, color: '#1c1917', margin: 0 }}>
+            Aucun collaborateur
+          </p>
+          <p style={{ fontSize: 13, color: '#78716c', margin: '4px 0 0' }}>
+            {searchTerm
+              ? 'Aucun collaborateur de cette filiale ne correspond à la recherche.'
+              : 'Cette filiale ne contient encore aucun collaborateur.'}
+          </p>
+        </div>
+      ) : (
+        <div style={{
+          height: 560, background: 'white', borderRadius: 16,
+          border: '1px solid #e7e5e4', overflow: 'hidden',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+        }}>
+          <OrgChart
+            employees={filteredEmployees}
+            onSelectEmployee={handleSelectEmployee}
+            onChangeResponsable={handleChangeResponsable}
+            zoom={zoom}
+            lectureSeule={!peutModifier}
+          />
+        </div>
+      )}
 
       {/* Modals */}
       {showModal && (
         <EmployeeModal
           employee={selectedEmployee}
           employees={employees}
+          filialeCourante={filterFiliale}
           onClose={() => setShowModal(false)}
           onSave={handleSaveEmployee}
         />

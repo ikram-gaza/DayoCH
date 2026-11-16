@@ -14,8 +14,13 @@ import TracabilitePage from './pages/fournitures/TracabilitePage'
 import DemandesStockPage from './pages/fournitures/DemandesStockPage'
 import AlertesStockPage from './pages/fournitures/AlertesStockPage'
 import EquipePage from './pages/equipe/EquipePage'
+import AgentsPage from './pages/agents/AgentsPage'
+import AgentDetailPage from './pages/agents/AgentDetailPage'
+import TrombinoscopePage from './pages/trombinoscope/TrombinoscopePage'
+import PilotagePage from './pages/pilotage/PilotagePage'
 import MainLayout from './components/layout/MainLayout'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { PERMISSIONS } from './config/permissions'
 
 const ALL_ROLES = ['employe', 'manager', 'gestionnaire_stock', 'super_admin']
 const STAFF_ROLES = ['employe', 'manager', 'super_admin']
@@ -23,17 +28,25 @@ const STOCK_ROLES = ['gestionnaire_stock', 'super_admin']
 const MANAGER_ROLES = ['manager', 'super_admin']
 const ADMIN_ROLES = ['super_admin']
 
-// Route protégée : redirige vers /login si non connecté
 function PrivateRoute({ children }) {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
+  if (loading) return <div className="p-6">Chargement…</div>
   return user ? children : <Navigate to="/login" replace />
 }
 
-// Route protégée par rôle : redirige vers /dashboard si le rôle n'est pas autorisé
 function RoleRoute({ roles, children }) {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
+  if (loading) return null
   if (!user) return <Navigate to="/login" replace />
   if (roles && !roles.includes(user.role)) return <Navigate to="/dashboard" replace />
+  return children
+}
+
+function PermissionRoute({ permission, children }) {
+  const { user, loading, peut } = useAuth()
+  if (loading) return null
+  if (!user) return <Navigate to="/login" replace />
+  if (!peut(permission)) return <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -57,6 +70,10 @@ function App() {
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<RoleRoute roles={ALL_ROLES}><DashboardPage /></RoleRoute>} />
+            <Route path="agents" element={<PermissionRoute permission={PERMISSIONS.AGENT_READ}><AgentsPage /></PermissionRoute>} />
+            <Route path="agents/:id" element={<PermissionRoute permission={PERMISSIONS.AGENT_READ}><AgentDetailPage /></PermissionRoute>} />
+            <Route path="trombinoscope" element={<PermissionRoute permission={PERMISSIONS.TROMBINOSCOPE_READ}><TrombinoscopePage /></PermissionRoute>} />
+            <Route path="pilotage" element={<PermissionRoute permission={PERMISSIONS.PILOTAGE_READ}><PilotagePage /></PermissionRoute>} />
 
             {/* Modules opérationnels */}
             <Route path="conges" element={<RoleRoute roles={STAFF_ROLES}><CongesPage /></RoleRoute>} />
@@ -67,7 +84,7 @@ function App() {
             <Route path="demandes-fournitures" element={<RoleRoute roles={STOCK_ROLES}><DemandesStockPage /></RoleRoute>} />
             <Route path="alertes" element={<RoleRoute roles={STOCK_ROLES}><AlertesStockPage /></RoleRoute>} />
             <Route path="profil" element={<RoleRoute roles={ALL_ROLES}><ProfilPage /></RoleRoute>} />
-            <Route path="organigramme" element={<RoleRoute roles={ADMIN_ROLES}><OrganigrammePage /></RoleRoute>} />
+            <Route path="organigramme" element={<PermissionRoute permission={PERMISSIONS.ORGANIGRAMME_READ}><OrganigrammePage /></PermissionRoute>} />
             <Route path="filiales" element={<RoleRoute roles={ADMIN_ROLES}><FilialesPage /></RoleRoute>} />
 
             {/* TODO: Routes à implémenter */}

@@ -8,9 +8,11 @@
 - **Vite 8.3.5** - Build tool
 - **Tailwind CSS v4.3.4** - Framework CSS
 - **React Router v7** - Routing
+- **TanStack Query v5** - Cache et états des requêtes serveur
 - **ReactFlow** - Organigramme interactif
 - **Lucide React** - Icônes
 - **Axios** - HTTP client
+- **qrcode.react** - QR code de configuration 2FA
 
 ## Design System
 
@@ -44,21 +46,29 @@ npm run build
 npm run lint
 ```
 
+## Documentation
+
+- [Arborescence et flux de l'application](./ARBORESCENCE_ET_FLUX.md) - vue d'ensemble pour comprendre l'organisation du code et les parcours utilisateurs.
+- [Version PDF](./ARBORESCENCE_ET_FLUX.pdf) - document mis en page pour diffusion.
+
 ## Modules
 
 1. **Dashboard** - Vue d'ensemble
-2. **Organigramme** - Hiérarchie interactive avec historique
-3. **Congés** - Gestion des absences
-4. **Fournitures** - Gestion du stock
-5. **Sollicitations** - Demandes diverses
-6. **Statistiques** - Tableaux de bord
-7. **Évaluations** - Performance
-8. **Formations** - Apprentissage & Quiz
-9. **Administration** - Configuration
+2. **Agents** - Liste, fiche, carrière, photo, signature et mutations
+3. **Trombinoscope** - Annuaire illustré groupé par filiale
+4. **Pilotage** - Indicateurs RH et points d'attention
+5. **Organigramme** - Hiérarchie interactive, vue par filiale et vue groupe
+6. **Congés** - Gestion des absences
+7. **Fournitures** - Gestion du stock
+8. **Sollicitations** - Demandes diverses
+9. **Administration** - Filiales, utilisateurs et configuration
+
+Modules à venir : Statistiques, Évaluations, Formations et Paramètres.
 
 ## Authentification
 
-- Connexion avec email/mot de passe
-- 2FA optionnelle (2FAS / TOTP)
+- Connexion avec email/matricule et mot de passe
+- 2FA TOTP (2FAS / Google Authenticator)
 - 4 rôles : employe, manager, gestionnaire_stock, super_admin
+- Mode démo disponible via `VITE_USE_MOCK_AUTH` et `VITE_USE_MOCK_DATA`
 
