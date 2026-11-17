@@ -28,3 +28,7 @@ dist-ssr
 *.pdf
 *.pdf:Zone.Identifier
 .aider*
+
+# Fichiers locaux / generation
+.nvmrx
+*.tsbuildinfo

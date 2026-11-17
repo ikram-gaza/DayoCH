@@ -1,562 +1,519 @@
-# DayoPI — Arborescence et flux de l'application
+# Dayo PulseInfra — Architecture et flux
 
 **Puls Infra / Groupe Dayo** — Front-end de gestion du Capital Humain
-Document de vulgarisation technique à destination du responsable hiérarchique.
 
-> État du document : novembre 2026.
-> Il décrit l'organisation actuelle du dépôt et le fonctionnement des écrans, sans entrer dans le détail de chaque ligne de code.
+Document de référence pour comprendre l'organisation du front, les contrats consommés et les parcours utilisateurs.
+
+> État : novembre 2026, après migration vers l'architecture cible.
+> Le cadrage complet est conservé dans [`docs/CADRAGE-DEV-LEAD-FRONT.txt`](./docs/CADRAGE-DEV-LEAD-FRONT.txt).
+> Les maquettes JavaScript/localStorage sont archivées sur la branche `archive/maquettes-localstorage`.
 
 ---
 
 ## Lecture rapide
 
-- L'application est un front-end **React** organisé en **pages**, **composants**, **hooks**, **services** et **configuration**.
-- Les pages affichent l'interface ; les services centralisent les appels API et les données de démonstration.
-- L'authentification et plusieurs modules récents peuvent fonctionner soit avec le **backend réel**, soit avec des **mocks locaux**.
-- Les modules historiques (congés, stock, fournitures, sollicitations, utilisateurs) utilisent encore **localStorage** et attendent leur branchement API.
-- Les nouveaux modules (agents, trombinoscope, pilotage, organigramme du groupe) sont conçus pour appeler directement l'API.
+- Le front consomme l'API NestJS ; il ne contient plus de données métier simulées.
+- L'utilisateur, ses rôles et ses permissions viennent du backend et ne sont pas stockés dans le navigateur.
+- Chaque domaine possède un dossier dans `src/fonctionnalites/`, avec ses types, son client API, ses hooks et ses écrans.
+- `src/shared/` fournit le socle technique et ne dépend d'aucun domaine.
+- Le menu est calculé par le serveur ; le front ne fait que l'afficher.
 
 ---
 
-## 1. Arborescence commentée
+## 1. Principes directeurs
+
+### Le backend est la source de vérité
+
+L'ordre de priorité est :
 
 ```text
-DayoCH/
-├── public/                         # Fichiers statiques servis par Vite
-│   ├── favicon.svg
-│   └── icons.svg
-│
-├── src/                            # Code source de l'application
-│   ├── main.jsx                    # Point d'entrée React + configuration TanStack Query
-│   ├── App.jsx                     # Routes, guards d'accès et assemblage général
-│   ├── index.css                   # Styles globaux et design system
-│   ├── App.css                     # Styles complémentaires
-│   │
-│   ├── assets/                     # Images et ressources importées par Vite
-│   │
-│   ├── config/                     # Configuration métier et jeux de démonstration
-│   │   ├── filiales.js             # Les 4 filiales du groupe
-│   │   ├── permissions.js          # Permissions et droits par rôle
-│   │   ├── donnees.js              # Activation/désactivation des mocks
-│   │   ├── agentsDemo.js           # Agents de démonstration et historique
-│   │   └── organigrammeDemo.js     # Collaborateurs et arbre d'organigramme mock
-│   │
-│   ├── context/
-│   │   └── AuthContext.jsx         # Session, rôle, filiale active, permissions
-│   │
-│   ├── hooks/                      # Logique React réutilisable
-│   │   ├── useAgents.js            # Requêtes/mutations agents + trombinoscope
-│   │   ├── usePilotage.js          # Requête du tableau de bord pilotage
-│   │   ├── usePerimetre.js         # Filiale active ou périmètre "groupe"
-│   │   ├── useFiltresUrl.js        # Filtres synchronisés avec l'URL
-│   │   ├── useDebounce.js          # Retard de saisie pour les recherches
-│   │   └── useImageProtegee.js     # Chargement des photos/signatures protégées
-│   │
-│   ├── services/                   # Accès aux données et logique métier
-│   │   ├── apiClient.js            # Axios, JWT, filiale, gestion des erreurs 401
-│   │   ├── jetons.js               # Access token, refresh token, filiale courante
-│   │   ├── apiAuth.js              # Endpoints d'authentification
-│   │   ├── authMappers.js          # Normalisation utilisateur/roles/permissions
-│   │   ├── authService.js          # Connexion, 2FA, session, mock auth
-│   │   ├── queryClient.js          # Configuration du cache TanStack Query
-│   │   ├── agentsService.js        # Agents, carrière, photos, signatures, exports
-│   │   ├── pilotageService.js      # Indicateurs, modules, points d'attention
-│   │   ├── apiOrganigramme.js      # Arbre, synthèse et export de l'organigramme
-│   │   ├── congesService.js        # Congés (mock localStorage)
-│   │   ├── fournituresService.js   # Fournitures/stock (mock localStorage)
-│   │   ├── sollicitationsService.js# Sollicitations RH (mock localStorage)
-│   │   └── utilisateursService.js  # Comptes utilisateurs (mock localStorage)
-│   │
-│   ├── pages/                      # Écrans de l'application
-│   │   ├── auth/
-│   │   │   ├── LoginPage.jsx
-│   │   │   └── TwoFactorPage.jsx
-│   │   ├── dashboard/
-│   │   │   └── DashboardPage.jsx
-│   │   ├── agents/
-│   │   │   ├── AgentsPage.jsx
-│   │   │   └── AgentDetailPage.jsx
-│   │   ├── trombinoscope/
-│   │   │   └── TrombinoscopePage.jsx
+backend NestJS > cadrage > maquettes front de référence
+```
+
+Quand un écran et une route backend se contredisent, c'est l'écran qui est corrigé.
+
+### Pas de mocks dans le code livré
+
+Les modes `VITE_USE_MOCK_AUTH` et `VITE_USE_MOCK_DATA`, les jeux de données de démonstration, les permissions locales et le calcul TOTP côté navigateur ont été supprimés.
+
+### TypeScript strict
+
+Le contrat API est recopié dans des types TypeScript. Un champ renommé côté backend doit provoquer une erreur de compilation, pas une page blanche en production.
+
+### Une URL d'API, un seul endroit
+
+Les composants n'appellent jamais Axios directement. Les routes sont déclarées dans les fichiers `api.ts` de chaque domaine.
+
+### Aucun écran sans route backend
+
+Un module dont le contrat serveur n'existe pas n'est pas routé. Une tuile « à venir » est préférable à un écran qui tombe en erreur.
+
+---
+
+## 2. Arborescence
+
+```text
+.
+├── docs/
+│   ├── CADRAGE-DEV-LEAD-FRONT.txt
+│   └── historique/
+│       ├── PRESENTATION.md
+│       └── RECAP.md
+├── public/
+├── src/
+│   ├── app/
+│   │   ├── application.ts          # nom de l'application
+│   │   ├── providers.tsx           # QueryClient + Auth
+│   │   ├── queryClient.ts
+│   │   ├── router.tsx              # routes lazy
+│   │   └── coquille/
+│   │       ├── Coquille.tsx        # barre latérale, header, contenu
+│   │       └── SelecteurFiliale.tsx
+│   ├── fonctionnalites/
+│   │   ├── authentification/
+│   │   │   └── PageConnexion.tsx
 │   │   ├── pilotage/
-│   │   │   └── PilotagePage.jsx
-│   │   ├── admin/
-│   │   │   ├── OrganigrammePage.jsx
-│   │   │   ├── FilialesPage.jsx
-│   │   │   └── UtilisateursPage.jsx
-│   │   ├── conges/
-│   │   │   └── CongesPage.jsx
-│   │   ├── fournitures/
-│   │   │   ├── FournituresPage.jsx
-│   │   │   ├── StockPage.jsx
-│   │   │   ├── TracabilitePage.jsx
-│   │   │   ├── DemandesStockPage.jsx
-│   │   │   └── AlertesStockPage.jsx
-│   │   ├── sollicitations/
-│   │   │   └── SollicitationsPage.jsx
-│   │   ├── profil/
-│   │   │   └── ProfilPage.jsx
-│   │   └── equipe/
-│   │       └── EquipePage.jsx
-│   │
-│   ├── components/                 # Composants réutilisables
-│   │   ├── layout/
-│   │   │   ├── MainLayout.jsx      # Structure sidebar + header + contenu
-│   │   │   ├── Header.jsx          # Barre supérieure + sélecteur de filiale
-│   │   │   └── Sidebar.jsx         # Menu latéral dépendant du rôle
-│   │   ├── ui/                     # Boutons, badges, cartes, modales, animations
-│   │   ├── common/
-│   │   │   └── ExportButtons.jsx   # Boutons CSV/Excel/PDF
+│   │   │   ├── PageTableauDeBord.tsx
+│   │   │   ├── api.ts
+│   │   │   ├── hooks.ts
+│   │   │   └── types.ts
 │   │   ├── agents/
-│   │   │   ├── AgentsFilters.jsx
-│   │   │   ├── FriseCarriere.jsx
-│   │   │   ├── PaveSignature.jsx
-│   │   │   └── PhotoAgent.jsx
+│   │   │   ├── PageAgents.tsx
+│   │   │   ├── PageFicheAgent.tsx
+│   │   │   ├── FiltresAgents.tsx
+│   │   │   ├── FriseCarriere.tsx
+│   │   │   ├── PaveSignature.tsx
+│   │   │   ├── PhotoAgent.tsx
+│   │   │   ├── api.ts
+│   │   │   ├── hooks.ts
+│   │   │   ├── types.ts
+│   │   │   └── useImageProtegee.ts
 │   │   ├── trombinoscope/
-│   │   │   └── CarteAgent.jsx
-│   │   ├── organigramme/            # Arbre interactif et vues groupe
-│   │   ├── conges/
-│   │   ├── fournitures/
-│   │   ├── sollicitations/
-│   │   ├── utilisateurs/
-│   │   ├── equipe/
-│   │   └── profil/
-│   │
-│   └── utils/                      # Fonctions utilitaires pures
-│       ├── format.js               # Dates, durées, initiales
-│       ├── export.js               # Génération d'exports côté client
-│       ├── organigramme.js         # Helpers multi-filiales
-│       └── totp.js                 # Génération et vérification TOTP
-│
-├── .env.example                    # Modèle de configuration environnement
-├── package.json                    # Dépendances et scripts npm
-├── vite.config.js                  # Serveur Vite et proxy vers le backend
-├── README.md                       # Présentation générale
-├── PRESENTATION.md                 # Support de présentation
-├── RECAP.md                        # Ancien récapitulatif de synthèse
-└── ARBORESCENCE_ET_FLUX.md         # Le présent document
+│   │   │   ├── PageTrombinoscope.tsx
+│   │   │   ├── CarteAgent.tsx
+│   │   │   ├── api.ts
+│   │   │   ├── hooks.ts
+│   │   │   └── types.ts
+│   │   ├── organigramme/
+│   │   │   ├── PageOrganigramme.tsx
+│   │   │   ├── NoeudOrganisation.tsx
+│   │   │   ├── disposition.ts
+│   │   │   ├── api.ts
+│   │   │   ├── hooks.ts
+│   │   │   └── types.ts
+│   │   └── organisation/
+│   │       ├── filiales/
+│   │       ├── departements/
+│   │       ├── services/
+│   │       └── referentiels/
+│   ├── shared/
+│   │   ├── api/
+│   │   │   ├── client.ts           # Axios, refresh, headers
+│   │   │   ├── erreurs.ts
+│   │   │   ├── jetons.ts
+│   │   │   └── types-api.ts
+│   │   ├── auth/
+│   │   │   ├── api-auth.ts
+│   │   │   ├── contexte.ts
+│   │   │   ├── contexte-auth.tsx
+│   │   │   ├── RouteProtegee.tsx
+│   │   │   ├── types.ts
+│   │   │   └── useAuth.ts
+│   │   ├── hooks/
+│   │   │   ├── useDebounce.ts
+│   │   │   └── useFiltresUrl.ts
+│   │   ├── ui/
+│   │   │   ├── Badge.tsx
+│   │   │   ├── Bouton.tsx
+│   │   │   ├── BoutonsExport.tsx
+│   │   │   ├── Champ.tsx
+│   │   │   ├── EnTetePage.tsx
+│   │   │   ├── Etats.tsx
+│   │   │   ├── Pagination.tsx
+│   │   │   ├── Squelette.tsx
+│   │   │   └── Transition.tsx
+│   │   └── utils/
+│   │       ├── cn.ts
+│   │       └── format.ts
+│   ├── styles/
+│   │   └── index.css               # Tailwind 4 + thème Dayo
+│   ├── assets/
+│   ├── main.tsx
+│   └── vite-env.d.ts
+├── .env.example
+├── eslint.config.js
+├── index.html
+├── package.json
+├── tsconfig.json
+├── tsconfig.app.json
+├── tsconfig.node.json
+└── vite.config.ts
 ```
 
-> `node_modules/`, `dist/` et les fichiers de cache ne sont pas détaillés : ils sont générés automatiquement.
+### Règles de dépendance
+
+```text
+app/  ───────►  fonctionnalites/  ───────►  shared/
+```
+
+- `app/` assemble les domaines : providers, routeur, coquille.
+- `fonctionnalites/` contient le métier : contrat API, hooks, écrans.
+- `shared/` ne connaît aucun domaine métier.
+- Un domaine peut dépendre du domaine `agents` ; l'inverse est interdit.
 
 ---
 
-## 2. Architecture en trois couches
+## 3. Flux d'authentification
+
+### Connexion simple
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│  PAGES ET COMPOSANTS                                    │
-│  Interface, formulaires, tableaux, modales              │
-│  src/pages  ·  src/components                           │
-└───────────────────────┬─────────────────────────────────┘
-                        │ hooks / appels de service
-┌───────────────────────▼─────────────────────────────────┐
-│  HOOKS ET SERVICES MÉTIER                               │
-│  Cache, filtres, appels API, règles d'accès             │
-│  src/hooks  ·  src/services                             │
-└───────────────────────┬─────────────────────────────────┘
-                        │ Axios + JWT + X-Filiale-Id
-┌───────────────────────▼─────────────────────────────────┐
-│  BACKEND API OU MOCK LOCAL                              │
-│  /api/v1/...  ou  localStorage                          │
-└─────────────────────────────────────────────────────────┘
+PageConnexion
+  → apiAuth.connexion(identifiant, motDePasse)
+  → POST /auth/login
+  → accessToken + refreshToken + utilisateur
+  → jetons.enregistrer()
+  → queryClient.clear()
+  → redirection vers la page demandée
 ```
 
-### Pourquoi cette séparation ?
+### Double authentification
 
-- **Les pages ne parlent pas directement à Axios.** Elles passent par des hooks ou des services.
-- **Le contrat API est centralisé.** Un changement d'endpoint ne nécessite pas de modifier chaque écran.
-- **Le mode démo est isolé.** Les mêmes écrans peuvent utiliser un mock ou le backend selon les variables d'environnement.
-- **Les règles de rôle et de filiale sont transverses.** Elles sont appliquées dans `AuthContext`, `App.jsx`, `Sidebar.jsx` et les guards de routes.
+Si le backend répond avec `twoFactorRequired: true` :
+
+```text
+PageConnexion
+  → challengeToken
+  → saisie du code TOTP
+  → apiAuth.verifier2fa(challengeToken, code)
+  → POST /auth/2fa/verifier
+  → jetons + utilisateur
+```
+
+Le secret TOTP reste côté serveur. Le navigateur ne génère aucun code.
+
+### Reprise de session
+
+Au démarrage :
+
+```text
+refresh token présent
+  → POST /auth/refresh
+  → nouveau access token
+  → GET /auth/profil
+  → utilisateur en mémoire
+```
+
+Le profil est normalisé dans `api-auth.ts` : les rôles peuvent arriver en codes ou en objets, le reste de l'application ne voit qu'une seule forme.
+
+### Conservation des jetons
+
+- L'access token reste en mémoire : un script injecté ne peut pas le lire dans `localStorage`.
+- Le refresh token est conservé dans `localStorage` sous `dayopi.refreshToken`, pour survivre au rechargement.
+- La filiale de travail est conservée sous `dayopi.filialeCourante`.
+- Une évolution vers un cookie `httpOnly` + protection CSRF est le compromis recommandé à terme.
+
+### Déconnexion
+
+```text
+POST /auth/logout avec le refresh token
+  → effacement des jetons
+  → effacement de la filiale courante
+  → queryClient.clear()
+  → retour à /connexion
+```
+
+Même si l'appel réseau échoue, la session locale est fermée.
 
 ---
 
-## 3. Démarrage de l'application
+## 4. Flux API
+
+### Instance Axios
+
+`src/shared/api/client.ts` crée une instance unique :
 
 ```text
-main.jsx
-  └── QueryClientProvider       (cache des requêtes)
-        └── App
-              └── AuthProvider  (session + permissions + filiale)
-                    └── BrowserRouter
-                          └── Routes
-                                ├── /login et /2fa  (publiques)
-                                └── MainLayout      (protégé)
-                                      ├── Sidebar
-                                      ├── Header
-                                      └── page courante
+baseURL = VITE_API_URL ou /api/v1
+timeout = 20 s
+Accept: application/json
 ```
 
-1. `main.jsx` crée le client TanStack Query.
-2. `AuthProvider` lit la session existante et restaure éventuellement le jeton.
-3. `App.jsx` vérifie si l'utilisateur est connecté.
-4. `MainLayout` affiche la navigation et le contenu.
-5. `Sidebar` adapte le menu au rôle ; `Header` affiche la filiale active.
+Chaque requête reçoit automatiquement :
+
+```http
+Authorization: Bearer <accessToken>
+X-Filiale-Id: <filialeCourante>
+```
+
+### Rafraîchissement concurrent
+
+Si plusieurs requêtes reçoivent `401` en parallèle :
+
+1. une seule promesse de rafraîchissement est créée ;
+2. les autres requêtes l'attendent ;
+3. chaque requête est rejouée une seule fois ;
+4. en cas d'échec, les jetons sont effacés et la session est déclarée perdue.
+
+Ce verrou évite de présenter plusieurs fois le même refresh token au backend, qui le ferait tourner et pourrait interpréter cela comme un vol de session.
+
+### Paramètres de requête
+
+`nettoyerParametres()` retire `undefined`, `null` et les chaînes vides. Un filtre vide n'est pas envoyé au backend, qui le refuserait en `400`.
+
+### Téléchargements
+
+Les exports sont protégés par le jeton. Le front :
+
+1. appelle la route avec `responseType: 'blob'` ;
+2. crée une URL temporaire ;
+3. déclenche le téléchargement ;
+4. révoque l'URL.
+
+### Images protégées
+
+Les photos et signatures ne sont pas chargées par une simple balise `<img src="/api/...">` : le navigateur n'y ajouterait pas l'en-tête `Authorization`.
+
+`useImageProtegee()` récupère le binaire via Axios, crée une URL `blob:` puis la révoque au démontage. La date de mise à jour est ajoutée à l'URL pour forcer le renouvellement après remplacement.
 
 ---
 
-## 4. Flux d'authentification
+## 5. Périmètre et RBAC
 
-### 4.1 Connexion
+### Comptes de filiale
 
-```text
-LoginPage
-  → AuthContext.login(identifiant, motDePasse)
-    → authService.login()
-      ├── VITE_USE_MOCK_AUTH=true
-      │     → comptes de démonstration + 2FA locale
-      └── VITE_USE_MOCK_AUTH=false
-            → POST /api/v1/auth/login
-  → réponse avec ou sans double authentification
-      ├── sans 2FA : session enregistrée → /dashboard
-      └── avec 2FA : utilisateur en attente → /2fa
-```
+Le backend impose la filiale. Le sélecteur n'est pas affiché.
 
-### 4.2 Double authentification
+### Comptes de niveau groupe
+
+Un compte sans filiale doit choisir une filiale de travail. Le sélecteur apparaît dans la coquille. Le choix est envoyé dans `X-Filiale-Id`.
+
+### Cache et filiale
+
+Le périmètre fait partie de chaque clé TanStack Query :
 
 ```text
-/2fa
-  → AuthContext.verify2FA(code)
-    → authService.verify2FA()
-      ├── mock : vérification TOTP locale
-      └── réel : POST /api/v1/auth/2fa/verifier
-  → création de la session authentifiée
-  → redirection vers /dashboard
+['agents', perimetre, 'liste', filtres]
+['agents', perimetre, 'detail', id]
+['pilotage', 'tableau-de-bord', perimetre]
 ```
 
-En mode mock, la 2FA est obligatoire pour `super_admin` et `manager`.
-En mode réel, c'est le backend qui décide si la 2FA est requise.
+Sans cette dimension, changer de filiale réafficherait le cache de la précédente : les données seraient vraies, mais pas pour le bon périmètre.
 
-### 4.3 Session et jetons
+### Permissions
 
-| Élément | Rôle |
-|---|---|
-| `dayoch_session_v1` | Session utilisateur sérialisée |
-| `dayopi.refreshToken` | Jeton de rafraîchissement |
-| `dayopi.filialeCourante` | Filiale sélectionnée |
-| `dayoch_2fa_secrets_v1` | Secrets TOTP validés, mode mock |
-| `dayoch_2fa_pending_v1` | Secret TOTP en attente de validation |
-
-L'access token est conservé en mémoire. Le refresh token est persisté pour permettre la reconnexion.
-`apiClient.js` intercepte les réponses `401` et tente un rafraîchissement avant de déconnecter l'utilisateur.
+- `peut(permission)` vérifie une permission du profil.
+- `aRole(...roles)` vérifie un rôle.
+- `SUPER_ADMIN` est considéré comme autorisé à tout.
+- Le menu vient de `GET /pilotage/modules`, filtré côté serveur.
+- `RouteProtegee` protège l'affichage, pas les données. Le backend reste la seule protection réelle.
 
 ---
 
-## 5. Flux d'un appel API
+## 6. Routes livrées
 
-```text
-Composant
-  → hook (ex. useAgents)
-    → service (ex. apiAgents.lister)
-      → apiClient (Axios)
-          headers :
-            Authorization: Bearer <accessToken>
-            X-Filiale-Id: <filialeCourante>
-        ├── backend disponible → réponse API
-        └── mode mock → calcul/filtrage sur les données locales
-```
-
-### Nouveaux modules
-
-Agents, trombinoscope et pilotage utilisent **TanStack Query** :
-
-- mise en cache des réponses ;
-- clé de cache incluant le périmètre/filiale ;
-- invalidation après création, mutation, photo ou signature ;
-- états `isLoading`, `isError`, `isFetching` gérés dans les pages.
-
-### Modules historiques
-
-Congés, fournitures, stock, sollicitations et utilisateurs appellent directement leurs services.
-Ces services lisent et écrivent dans `localStorage`.
-Ils restent fonctionnels en démonstration, mais ne sont pas encore branchés au backend.
-
----
-
-## 6. Flux des rôles et permissions
-
-### 6.1 Rôles
-
-Quatre rôles sont utilisés dans l'interface :
-
-- `employe`
-- `manager`
-- `gestionnaire_stock`
-- `super_admin`
-
-Le backend peut envoyer des codes différents (`SUPER_ADMIN`, `GERANT`, `AGENT`, etc.).
-`authMappers.js` les traduit vers ces quatre rôles internes.
-
-### 6.2 Permissions
-
-Les permissions sont définies dans `config/permissions.js` :
-
-| Permission | super_admin | manager | gestionnaire_stock | employe |
-|---|---:|---:|---:|---:|
-| `pilotage:read` | oui | oui | non | non |
-| `agent:read` | oui | oui | oui | oui |
-| `agent:update` | oui | non | non | non |
-| `trombinoscope:read` | oui | oui | oui | oui |
-| `organigramme:read` | oui | oui | non | non |
-| `organigramme:export` | oui | oui | non | non |
-
-`super_admin` reçoit toujours toutes les permissions.
-
-### 6.3 Application des droits
-
-```text
-App.jsx
-  ├── PrivateRoute     → utilisateur connecté ?
-  ├── RoleRoute        → rôle autorisé ?
-  └── PermissionRoute  → permission autorisée ?
-Sidebar.jsx            → menu adapté au rôle
-AuthContext.peut()     → vérification unitaire dans les pages
-```
-
-> Les guards du front améliorent l'expérience utilisateur, mais la sécurité réelle doit être assurée par le backend.
-
----
-
-## 7. Flux de la filiale et du périmètre
-
-```text
-Header : sélecteur de filiale
-  → AuthContext.changerFiliale(id)
-    → jetons.setFiliale(id)
-      → apiClient ajoute X-Filiale-Id
-      → les clés TanStack Query changent
-      → les données de la nouvelle filiale sont rechargées
-```
-
-- Un utilisateur rattaché à une seule filiale voit sa filiale imposée.
-- Un compte groupe (`filialeId` absent) peut changer de filiale.
-- La première filiale est sélectionnée par défaut pour un compte groupe.
-- Le trombinoscope du groupe reste volontairement transversal pour un compte groupe.
-- Le pilotage et la liste des agents sont limités au périmètre sélectionné.
-
----
-
-## 8. Flux métier par module
-
-### 8.1 Pilotage
-
-```text
-PilotagePage
-  → usePilotage()
-    → apiPilotage.tableauDeBord(perimetre, role, permissions)
-      ├── backend : GET /pilotage/tableau-de-bord
-      └── mock : calcul depuis les agents de démonstration
-  → affichage :
-      - indicateurs clés
-      - points d'attention
-      - modules accessibles
-      - effectif par filiale
-```
-
-Les indicateurs mock sont calculés à partir des agents : effectif actif, couverture photo, comptes manquants, emails manquants, gérants, filiales couvertes.
-
-### 8.2 Agents
-
-```text
-/agents
-  → filtres stockés dans l'URL
-  → useAgents(filtres)
-  → apiAgents.lister()
-      ├── GET /organisation/agents
-      └── mock filtrage/tri/pagination
-  → tableau paginé + exports
-```
-
-```text
-/agents/:id
-  → useAgent() + useCarriere()
-  → apiAgents.detail() + apiAgents.historique()
-  → actions disponibles :
-      - photo
-      - signature tracée ou fichier
-      - mutation de poste/service
-      - export de la carrière
-```
-
-### 8.3 Trombinoscope
-
-```text
-/trombinoscope
-  → useTrombinoscope(filtres, compteGroupe)
-  → apiAgents.agentsPourTrombinoscope()
-      ├── GET /organisation/trombinoscope
-      └── mock regroupement par filiale
-  → cartes agents regroupées par filiale
-  → export PDF / Excel / CSV
-```
-
-### 8.4 Organigramme
-
-Deux vues coexistent :
-
-1. **Par filiale** : organigramme interactif avec ReactFlow, drag & drop et historique local.
-2. **Organigramme du groupe** : arbre consolidé, lecture seule, avec filtres et exports.
-   - En mode mock : arbre de démonstration.
-   - En mode réel : `GET /organisation/organigramme`.
-
-Les managers peuvent consulter l'organigramme, mais seuls les super administrateurs peuvent modifier la vue par filiale.
-
-### 8.5 Modules historiques
-
-| Module | Service | Stockage actuel |
+| Route | Écran | Guard |
 |---|---|---|
-| Congés | `congesService.js` | `localStorage` |
-| Fournitures | `fournituresService.js` | `localStorage` |
-| Stock / traçabilité | `fournituresService.js` | `localStorage` |
-| Sollicitations | `sollicitationsService.js` | `localStorage` |
-| Utilisateurs | `utilisateursService.js` | `localStorage` |
+| `/connexion` | Connexion et second facteur | Public |
+| `/tableau-de-bord` | Indicateurs, points d'attention, modules | Connecté |
+| `/agents` | Liste, filtres, tri, pagination, export | Connecté |
+| `/agents/:id` | Fiche, photo, signature, carrière, export | Connecté |
+| `/trombinoscope` | Cartes groupées par filiale, export | Connecté |
+| `/organigramme` | Arbre ReactFlow, date de référence, synthèse, export | Connecté |
+| `/` | Redirection vers `/tableau-de-bord` | — |
+| `*` | Page introuvable | — |
 
-Ces modules sont fonctionnels pour la démonstration. Le branchement API consiste principalement à remplacer l'intérieur des services sans modifier les pages.
-
----
-
-## 9. Cartographie des routes
-
-| Route | Écran | Accès |
-|---|---|---|
-| `/login` | Connexion | Public |
-| `/2fa` | Double authentification | Session en attente |
-| `/dashboard` | Tableau de bord | Tous les rôles |
-| `/agents` | Liste des agents | Tous les rôles |
-| `/agents/:id` | Fiche agent | Tous les rôles |
-| `/trombinoscope` | Annuaire illustré | Tous les rôles |
-| `/pilotage` | Indicateurs de pilotage | Manager, super admin |
-| `/conges` | Congés et absences | Employé, manager, super admin |
-| `/sollicitations` | Sollicitations RH | Employé, manager, super admin |
-| `/fournitures` | Demandes de fournitures | Employé, manager, super admin |
-| `/stock` | Inventaire | Gestionnaire stock, super admin |
-| `/tracabilite` | Mouvements de stock | Gestionnaire stock, super admin |
-| `/demandes-fournitures` | Demandes de stock | Gestionnaire stock, super admin |
-| `/alertes` | Alertes stock | Gestionnaire stock, super admin |
-| `/profil` | Mon profil | Tous les rôles |
-| `/organigramme` | Organigramme | Manager, super admin |
-| `/filiales` | Gestion des filiales | Super admin |
-| `/utilisateurs` | Gestion des comptes | Super admin |
-| `/equipe` | Mon équipe | Manager, super admin |
-| `/formations` | Formations | Employé, manager, super admin — à venir |
-| `/evaluations` | Évaluations | Manager, super admin — à venir |
-| `/statistiques` | Statistiques | Super admin — à venir |
-| `/parametres` | Paramètres | Super admin — à venir |
+Toutes les pages protégées sont chargées en `lazy`. L'organigramme, qui embarque ReactFlow, n'est pas téléchargé par un utilisateur qui consulte seulement la liste des agents.
 
 ---
 
-## 10. Mode mock et mode backend
+## 7. Modules livrés
 
-### Variables d'environnement
+### Authentification
 
-| Variable | Valeur par défaut | Effet |
+- Connexion par identifiant et mot de passe.
+- Défi 2FA avec `challengeToken`.
+- Reprise de session et déconnexion.
+- Normalisation du profil.
+
+### Pilotage
+
+- `GET /pilotage/tableau-de-bord` : un seul appel alimente la page.
+- Indicateurs, points d'attention, effectif par filiale, modules.
+- `GET /pilotage/modules` : source unique du menu.
+
+### Agents
+
+- Liste paginée avec filtres dans l'URL.
+- Recherche, département, service, fonction, statut, gérance, email, compte, dates.
+- Tri par colonnes.
+- Export `xlsx`, `pdf`, `csv`.
+- Fiche agent, historique de carrière, export carrière.
+- Photo et signature protégées.
+- Signature tracée au canvas, envoyée en data URL.
+
+### Trombinoscope
+
+- Groupes par filiale, non paginé.
+- Photos protégées et initiales de repli.
+- Export.
+
+### Organigramme
+
+- Arbre récursif filiale → département → service → agent.
+- Date de référence pour consulter un organigramme passé.
+- Filtres département, agents, actifs.
+- Vue groupe pour les comptes concernés.
+- Synthèse et exports.
+- Disposition calculée dans `disposition.ts`.
+
+### Organisation
+
+- Référentiel des filiales.
+- Référentiel des départements.
+- Référentiel des services, filtrable par département.
+
+### Socle partagé
+
+- Boutons, champs, badges, cartes, pagination, squelettes, états vides et erreurs.
+- `useFiltresUrl()` : les filtres survivent au rechargement et au partage d'URL.
+- `useDebounce()` : recherche sans requête à chaque frappe.
+- `formaterDate()`, `initiales()`.
+- `cn()` pour composer les classes Tailwind.
+
+### Modules non livrés dans ce socle
+
+Les domaines historiques non extraits dans la Partie VII du cadrage restent à créer selon le plan d'intégration :
+
+- comptes et profils ;
+- administration des filiales, départements, services et audit ;
+- équipe ;
+- congés ;
+- fournitures et stocks ;
+- sollicitations ;
+- statistiques, évaluations, formations et paramètres.
+
+Ils ne doivent être routés qu'après validation de leur contrat backend.
+
+---
+
+## 8. Contrats backend consommés
+
+### Authentification
+
+| Méthode | Route | Usage |
 |---|---|---|
-| `VITE_API_URL` | `/api/v1` | Préfixe des appels API |
-| `VITE_USE_MOCK_AUTH` | `true` | Authentification locale simulée |
-| `VITE_USE_MOCK_DATA` | `true` | Données métier simulées |
+| `POST` | `/auth/login` | Connexion, éventuel défi 2FA |
+| `POST` | `/auth/2fa/verifier` | Validation du code TOTP |
+| `POST` | `/auth/refresh` | Renouvellement des jetons |
+| `GET` | `/auth/profil` | Profil, rôles, permissions |
+| `POST` | `/auth/logout` | Révocation du refresh token |
 
-### Comptes de démonstration
+### Pilotage
 
-En mode mock, l'identifiant détermine le rôle (le mot de passe est ignoré) :
+| Méthode | Route | Usage |
+|---|---|---|
+| `GET` | `/pilotage/tableau-de-bord` | Indicateurs et modules |
+| `GET` | `/pilotage/modules` | Menu filtré par droits |
 
-| Identifiant | Rôle |
-|---|---|
-| `super_admin` | Super administrateur |
-| `admin` | Super administrateur |
-| `manager` | Manager |
-| `employe` | Employé |
-| `stock` | Gestionnaire de stock |
-| `2fa` | Parcours de double authentification |
+### Organisation
 
-### Backend réel
+| Méthode | Route | Usage |
+|---|---|---|
+| `GET` | `/organisation/agents` | Liste paginée |
+| `GET` | `/organisation/agents/:id` | Fiche agent |
+| `GET` | `/organisation/agents/:id/historique` | Carrière |
+| `PATCH` | `/organisation/agents/:id/mutation` | Mutation |
+| `POST` | `/organisation/agents/:id/photo` | Téléversement photo |
+| `GET` | `/organisation/agents/:id/photo` | Photo protégée |
+| `POST` | `/organisation/agents/:id/signature/fichier` | Signature fichier |
+| `PUT` | `/organisation/agents/:id/signature` | Signature tracée |
+| `GET` | `/organisation/agents/:id/signature` | Signature protégée |
+| `GET` | `/organisation/agents/export` | Export liste |
+| `GET` | `/organisation/agents/:id/historique/export` | Export carrière |
+| `GET` | `/organisation/trombinoscope` | Groupes par filiale |
+| `GET` | `/organisation/trombinoscope/export` | Export annuaire |
+| `GET` | `/organisation/organigramme` | Arbre |
+| `GET` | `/organisation/organigramme/synthese` | Synthèse |
+| `GET` | `/organisation/organigramme/export` | Export PDF/XLSX |
+| `GET` | `/organisation/departements` | Référentiel |
+| `GET` | `/organisation/services` | Référentiel |
+| `GET` | `/filiales` | Référentiel filiales |
+
+### Enveloppes
+
+Les listes utilisent la même pagination :
+
+```ts
+interface PageApi<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+```
+
+Les erreurs suivent le filtre NestJS :
+
+```ts
+interface CorpsErreurApi {
+  success: false;
+  code: string;
+  message: string | string[];
+  path: string;
+  timestamp: string;
+}
+```
+
+---
+
+## 9. Environnement et exécution
 
 ```bash
-# 1. Démarrer le backend sur le port 3000
-# 2. Configurer le front
-VITE_USE_MOCK_AUTH=false
-VITE_USE_MOCK_DATA=false
-
-# 3. Relancer le serveur Vite
+npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-Vite redirige `/api` vers `http://localhost:3000` grâce à `vite.config.js`.
+Le proxy Vite envoie `/api` vers `http://localhost:3000`.
 
-### Endpoints déjà prévus pour les nouveaux modules
+```env
+VITE_API_URL=/api/v1
+VITE_NOM_APPLICATION="DAYO PulseInfra"
+```
 
-- **Auth** : `/auth/login`, `/auth/2fa/verifier`, `/auth/2fa/setup`, `/auth/2fa/enable`, `/auth/2fa/disable`, `/auth/profil`, `/auth/refresh`, `/auth/logout`
-- **Agents** : `/organisation/agents`, `/organisation/agents/:id`, `/organisation/agents/:id/historique`, `/organisation/agents/:id/historique/export`, `/organisation/agents/:id/mutation`, `/organisation/agents/:id/photo`, `/organisation/agents/:id/signature`, `/organisation/agents/:id/signature/fichier`, `/organisation/agents/export`
-- **Référentiels agents** : `/organisation/departements`, `/organisation/services`
-- **Trombinoscope** : `/organisation/trombinoscope`, `/organisation/trombinoscope/export`
-- **Pilotage** : `/pilotage/tableau-de-bord`, `/pilotage/modules`
-- **Organigramme** : `/organisation/organigramme`, `/organisation/organigramme/synthese`, `/organisation/organigramme/export`
+Côté backend, `npm run seed` fournit un jeu de données de démonstration.
 
----
+### Vérifications
 
-## 11. État d'avancement
+```bash
+npm run build   # tsc -b && vite build
+npm run lint    # ESLint
+npm run format  # Prettier
+```
 
-### Finalisé et utilisable
-
-- Authentification, session, 2FA et comptes de démonstration.
-- Layout général, navigation, sidebar, header et sélecteur de filiale.
-- Guards de routes par rôle et par permission.
-- Module agents : liste, fiche, filtres, carrière, photo, signature, mutation, exports.
-- Trombinoscope groupé : recherche, filtre photo, regroupement par filiale, exports.
-- Pilotage : indicateurs, points d'attention, modules, effectif par filiale.
-- Organigramme par filiale et organigramme du groupe.
-- Modules historiques de démonstration : congés, fournitures, stock, sollicitations, utilisateurs, profil, équipe.
-
-### Partiel ou à finaliser
-
-- Branchement API complet des modules historiques.
-- Bascule complète de l'organigramme par filiale sur les données serveur.
-- Modules Formations, Évaluations, Statistiques et Paramètres.
-- Notifications temps réel et recherche globale.
-- Tests automatisés et validation visuelle navigateur.
-
-### Dettes techniques visibles
-
-- Certains modules conservent des données locales dans `localStorage`.
-- La vue par filiale de l'organigramme utilise encore un modèle de démonstration.
-- Le bundle principal dépasse légèrement le seuil d'alerte de Vite ; un découpage par route pourra être ajouté.
-- Les guards front ne remplacent pas les contrôles d'accès côté backend.
+Le build et le lint passent sur le socle actuel. Les parcours API réels restent à valider avec le backend démarré.
 
 ---
 
-## 12. Par où commencer pour comprendre le code
+## 10. Migration et historique
 
-Ordre de lecture recommandé :
-
-1. `src/App.jsx` — quelles pages existent et qui peut y accéder.
-2. `src/components/layout/Sidebar.jsx` — menu visible par rôle.
-3. `src/context/AuthContext.jsx` — session, permissions, filiale active.
-4. `src/services/authService.js` — connexion et 2FA.
-5. `src/services/apiClient.js` — comment un appel API est envoyé.
-6. `src/pages/agents/AgentsPage.jsx` — exemple complet d'une page connectée à l'API.
-7. `src/hooks/useAgents.js` — exemple de cache et d'invalidation TanStack Query.
-8. `src/pages/pilotage/PilotagePage.jsx` — exemple de tableau de bord consolidé.
+- Les maquettes JavaScript/localStorage sont conservées sur `archive/maquettes-localstorage`.
+- Le code livré ne contient plus de service de démonstration, de permissions locales ni de TOTP navigateur.
+- Les anciens documents `PRESENTATION.md` et `RECAP.md` sont déplacés dans `docs/historique/`.
+- Le cadrage complet est dans `docs/CADRAGE-DEV-LEAD-FRONT.txt`.
+- Le plan d'intégration détaillé (`PLAN-INTEGRATION-FRONT.txt`) et l'archive `dayo-pulseinfra-front.zip` restent à récupérer pour les modules non livrés.
 
 ---
 
-## 13. Glossaire
+## 11. Points de vigilance
 
-| Terme | Définition |
-|---|---|
-| **Agent** | Collaborateur du groupe, rattaché à une filiale, un département et un service. |
-| **Filiale** | Entité géographique du groupe (Bénin, Guinée, Burkina Faso, Côte d'Ivoire). |
-| **Périmètre** | Données visibles selon la filiale active ou le compte groupe. |
-| **Mock** | Données simulées localement, utilisées sans backend. |
-| **JWT** | Jeton d'authentification envoyé à l'API. |
-| **2FA / TOTP** | Double authentification avec code à 6 chiffres renouvelé toutes les 30 secondes. |
-| **Guard** | Contrôle qui empêche l'accès à une page si l'utilisateur n'est pas autorisé. |
-| **TanStack Query** | Bibliothèque qui gère le cache et les états des requêtes serveur. |
-| **localStorage** | Stockage local du navigateur, utilisé pour la démonstration. |
-
----
-
-## Conclusion
-
-Le projet est structuré pour que l'interface reste indépendante de la source de données.
-Les modules récents sont déjà pensés pour le backend ; les modules historiques peuvent être migrés progressivement en remplaçant leurs services, sans réécrire les écrans.
-
-Cette organisation permet de présenter une application démontrable aujourd'hui, tout en gardant un chemin clair vers une version entièrement connectée à l'API.
+1. **Backend indisponible** : les écrans compilent, mais les parcours réels ne sont pas testés.
+2. **Refresh token** : `localStorage` est un compromis documenté ; viser un cookie `httpOnly` avec CSRF.
+3. **Filiale** : un compte groupe sans `X-Filiale-Id` ne peut pas être servi correctement.
+4. **Exports** : toujours passer par le client Axios pour conserver l'authentification.
+5. **Images** : révoquer les URL `blob:` pour éviter les fuites mémoire.
+6. **Mutations** : invalider les clés TanStack Query plutôt que modifier le cache à la main.
+7. **Permissions** : ne jamais considérer le menu ou le guard front comme une sécurité.
+8. **Modules à créer** : ne pas les router avant d'avoir le contrat backend et le plan d'intégration.

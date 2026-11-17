@@ -1,74 +1,127 @@
-# DayoPI
+# Dayo PulseInfra — Front
 
-**Puls Infra** — Application web de gestion du Capital Humain pour le Groupe Dayo.
+Front-end React/TypeScript de l'application de gestion du Capital Humain du groupe Dayo.
 
-## Stack Technique
+Le projet est organisé pour consommer directement l'API NestJS : aucune donnée métier n'est simulée dans le code livré.
 
-- **React 19.3.1** - Framework UI
-- **Vite 8.3.5** - Build tool
-- **Tailwind CSS v4.3.4** - Framework CSS
-- **React Router v7** - Routing
-- **TanStack Query v5** - Cache et états des requêtes serveur
-- **ReactFlow** - Organigramme interactif
-- **Lucide React** - Icônes
-- **Axios** - HTTP client
-- **qrcode.react** - QR code de configuration 2FA
+## Principes
 
-## Design System
+- Le backend est la source de vérité : routes, rôles, permissions, menus et indicateurs.
+- Aucun mock d'authentification ni de données métier dans l'application.
+- TypeScript strict pour transformer les écarts de contrat API en erreurs de compilation.
+- Une URL d'API ne s'écrit que dans un fichier `api.ts`.
+- Une clé de cache TanStack Query contient toujours le périmètre de filiale.
+- Un module dont les routes backend n'existent pas n'a pas d'écran.
 
-Design premium inspiré d'Apple avec :
-- Glassmorphism & backdrop-blur
-- Ombres multi-layered
-- Animations fluides
-- Typographie SF Pro Display / Inter
-- Couleurs officielles Groupe Dayo
+## Stack
 
-## Filiales
+- React 19
+- Vite 8
+- TypeScript strict
+- Tailwind CSS 4
+- React Router 7
+- TanStack Query 5
+- Axios
+- ReactFlow (`@xyflow/react`)
+- Lucide React
+- Motion
 
-- 🇧🇯 Dayo Bénin (BEN)
-- 🇬🇳 Dayo Guinée (GIN)
-- 🇧🇫 Dayo Burkina Faso (BFA)
-- 🇨🇮 Dayo Côte d'Ivoire (CIV)
+## Démarrage
 
-## Développement
+Prérequis : Node 22, backend NestJS accessible sur `http://localhost:3000`.
 
 ```bash
-# Installation des dépendances
 npm install
-
-# Serveur de développement
+cp .env.example .env.local
 npm run dev
-
-# Build production
-npm run build
-
-# Lint
-npm run lint
 ```
+
+Le serveur Vite relaie `/api` vers `http://localhost:3000`. Aucune URL de serveur n'est écrite dans le code.
+
+Variables disponibles :
+
+```env
+VITE_API_URL=/api/v1
+VITE_NOM_APPLICATION="DAYO PulseInfra"
+```
+
+Toute variable `VITE_` est exposée au navigateur. Aucun secret ne doit y être placé.
+
+## Scripts
+
+```bash
+npm run dev       # serveur de développement
+npm run build     # vérification TypeScript puis build Vite
+npm run lint      # ESLint
+npm run format    # Prettier
+npm run preview   # prévisualisation du build
+```
+
+## Architecture
+
+```text
+src/
+├── app/                  # assemblage : providers, routeur, coquille
+├── shared/               # socle technique, sans métier
+│   ├── api/              # Axios, jetons, erreurs, types API
+│   ├── auth/             # session, profil, guards
+│   ├── ui/               # composants d'interface génériques
+│   ├── hooks/            # hooks partagés
+│   └── utils/            # formatage, classes CSS
+├── fonctionnalites/      # un dossier par domaine backend
+│   ├── authentification/
+│   ├── pilotage/
+│   ├── agents/
+│   ├── trombinoscope/
+│   ├── organigramme/
+│   └── organisation/
+└── styles/               # Tailwind 4 et charte Dayo
+```
+
+Règles de dépendance :
+
+```text
+app/  ->  fonctionnalites/  ->  shared/
+```
+
+- `shared/` ne connaît aucun domaine métier.
+- `app/` est la seule couche qui assemble plusieurs domaines.
+- Un domaine peut importer le domaine `agents`, jamais l'inverse.
+
+## Routes livrées
+
+| Route | Écran | Accès |
+|---|---|---|
+| `/connexion` | Connexion + 2FA | Public |
+| `/tableau-de-bord` | Pilotage | Connecté |
+| `/agents` | Liste des agents | Connecté |
+| `/agents/:id` | Fiche agent, carrière, photo, signature | Connecté |
+| `/trombinoscope` | Annuaire illustré | Connecté |
+| `/organigramme` | Organigramme daté, lecture seule | Connecté |
+
+Les droits fins sont vérifiés par le backend ; le guard front ne protège que l'affichage.
+
+Le menu latéral n'est pas codé en dur : il vient de `GET /pilotage/modules`, filtré par le serveur selon les rôles et permissions du compte.
+
+## Authentification et sécurité
+
+- L'utilisateur et ses permissions ne sont pas stockés dans le navigateur.
+- Seuls le refresh token (`dayopi.refreshToken`) et la filiale de travail (`dayopi.filialeCourante`) sont persistés.
+- Au démarrage, la session est reprise par `/auth/refresh` puis `/auth/profil`.
+- Les permissions affichées viennent du serveur ; les contrôles réels restent côté backend.
+- Le cache TanStack Query est vidé à chaque connexion et déconnexion.
 
 ## Documentation
 
-- [Arborescence et flux de l'application](./ARBORESCENCE_ET_FLUX.md) - vue d'ensemble pour comprendre l'organisation du code et les parcours utilisateurs.
-- [Version PDF](./ARBORESCENCE_ET_FLUX.pdf) - document mis en page pour diffusion.
+- [Architecture et flux](./ARBORESCENCE_ET_FLUX.md)
+- [Architecture et flux — version PDF](./ARBORESCENCE_ET_FLUX.pdf)
+- [Cadrage de migration](./docs/CADRAGE-DEV-LEAD-FRONT.txt)
+- [Documents historiques](./docs/historique/)
 
-## Modules
+## Historique
 
-1. **Dashboard** - Vue d'ensemble
-2. **Agents** - Liste, fiche, carrière, photo, signature et mutations
-3. **Trombinoscope** - Annuaire illustré groupé par filiale
-4. **Pilotage** - Indicateurs RH et points d'attention
-5. **Organigramme** - Hiérarchie interactive, vue par filiale et vue groupe
-6. **Congés** - Gestion des absences
-7. **Fournitures** - Gestion du stock
-8. **Sollicitations** - Demandes diverses
-9. **Administration** - Filiales, utilisateurs et configuration
+Les anciennes maquettes JavaScript/localStorage sont conservées sur la branche Git :
 
-Modules à venir : Statistiques, Évaluations, Formations et Paramètres.
-
-## Authentification
-
-- Connexion avec email/matricule et mot de passe
-- 2FA TOTP (2FAS / Google Authenticator)
-- 4 rôles : employe, manager, gestionnaire_stock, super_admin
-- Mode démo disponible via `VITE_USE_MOCK_AUTH` et `VITE_USE_MOCK_DATA`
-
+```text
+archive/maquettes-localstorage
+```

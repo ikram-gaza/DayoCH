@@ -1,0 +1,73 @@
+@import 'tailwindcss';
+
+/*
+ * Tailwind v4 : le theme se declare ICI, en CSS, et non plus dans un
+ * tailwind.config.js. Chaque variable declaree dans @theme devient
+ * automatiquement une classe utilitaire : --color-dayo-bleu produit
+ * bg-dayo-bleu, text-dayo-bleu, border-dayo-bleu, etc.
+ *
+ * Consequence pratique pour le projet : la charte Dayo est definie a un seul
+ * endroit, et aucune couleur ne doit apparaitre en dur dans un composant.
+ * Une revue de code qui trouve bg-[#007FE1] quelque part est une revue qui
+ * doit refuser la contribution.
+ */
+@theme {
+  --color-dayo-bleu: #007fe1;
+  --color-dayo-bleu-fonce: #005ba3;
+  --color-dayo-bleu-clair: #e6f2fc;
+  --color-dayo-rouge: #f24333;
+  --color-dayo-vert: #52784d;
+
+  --color-encre: #1f2933;
+  --color-encre-douce: #52606d;
+  --color-filet: #d3d9df;
+  --color-fond: #f5f7fa;
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+
+  --radius-carte: 0.625rem;
+  --shadow-carte: 0 1px 2px rgb(31 41 51 / 0.08), 0 4px 12px rgb(31 41 51 / 0.06);
+}
+
+@layer base {
+  body {
+    @apply bg-fond text-encre font-sans antialiased;
+  }
+
+  /* Un focus visible n est pas une option : c est le seul repere de qui
+     navigue au clavier. On le pose une fois, globalement. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-dayo-bleu;
+  }
+
+  /* Respecte le reglage systeme "reduire les animations". Motion le lit aussi,
+     mais les transitions CSS, elles, ne le liraient pas toutes seules. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /*
+   * Trois classes seulement sont definies ici, et ce sont celles que l on
+   * repeterait sinon des dizaines de fois a l identique. Tout le reste reste
+   * en utilitaires dans le JSX : extraire trop tot produit un second langage
+   * de style que personne ne connait.
+   */
+  .carte {
+    @apply rounded-[--radius-carte] border border-filet bg-white shadow-[--shadow-carte];
+  }
+
+  .lien-nav {
+    @apply flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-encre-douce transition-colors hover:bg-fond;
+  }
+
+  .lien-nav-actif {
+    @apply bg-dayo-bleu-clair text-dayo-bleu-fonce;
+  }
+}
