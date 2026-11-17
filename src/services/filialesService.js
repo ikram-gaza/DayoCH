@@ -90,7 +90,7 @@ export const filialesService = {
 
   lister: async () => {
     if (USE_MOCK_DATA) return lireMock().map((f, i) => normaliserFiliale(f, i))
-    const { data } = await api.get('/filiales', { params: { sortOrder: 'ASC' } })
+    const { data } = await api.get('/filiales', { params: { sortBy: 'code', sortOrder: 'ASC', limit: 100 } })
     return extraireListe(data).map((f, i) => normaliserFiliale(f, i))
   },
 

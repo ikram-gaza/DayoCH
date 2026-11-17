@@ -154,17 +154,23 @@ function normaliserUtilisateur(brut = {}, extra = {}) {
   const doitChangerMotDePasse = [false, 'false', 0, '0', 'False', null, undefined].includes(brutFlag)
     ? false
     : Boolean(brutFlag)
+  const nom = brut.nom || morceaux.slice(1).join(' ') || ''
+  const prenom = brut.prenom || morceaux[0] || ''
 
   return {
     ...brut,
-    nom: brut.nom || morceaux.slice(1).join(' ') || '',
-    prenom: brut.prenom || morceaux[0] || '',
+    nom,
+    prenom,
+    nomComplet: nomComplet || `${prenom} ${nom}`.trim(),
     email: brut.email || null,
     matricule: brut.matricule || '',
     telephone: brut.telephone || brut.agent?.telephone || '',
     filiale: filiale?.nom || (typeof brut.filiale === 'string' ? brut.filiale : '') || brut.filialeId || '',
     filialeId: brut.filialeId ?? filiale?.id ?? null,
     poste: brut.poste || brut.agent?.poste || brut.agent?.fonction || '',
+    fonction: brut.fonction || brut.agent?.fonction || brut.poste || '',
+    agentId: brut.agentId ?? brut.agent?.id ?? null,
+    serviceId: brut.serviceId ?? brut.agent?.serviceId ?? null,
     role: ROLES_UI[roleBackend] || 'employe',
     roleBackend,
     roleLabel: ROLE_LABELS[roleBackend] || roleBackend,
@@ -484,18 +490,18 @@ export const authService = {
   enable2FA: async (user, secret, code) => {
     if (!USE_MOCK) {
       try {
-        await api.post('/auth/2fa/activer', { codeTotp: code })
+        const { data } = await api.post('/auth/2fa/activer', { codeTotp: code })
         authService.updateUser({ twoFactorEnabled: true })
-        return true
+        return { ok: true, codesDeSecours: data?.codesDeSecours || null }
       } catch (echec) {
-        if ([400, 401, 422].includes(echec?.response?.status)) return false
+        if ([400, 401, 422].includes(echec?.response?.status)) return { ok: false }
         throw echec
       }
     }
 
-    if (!(await verifyTOTP(secret, code))) return false
+    if (!(await verifyTOTP(secret, code))) return { ok: false }
     setSecret(user, secret)
-    return true
+    return { ok: true, codesDeSecours: null }
   },
 
   disable2FA: async (user, credentials = {}) => {

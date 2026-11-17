@@ -1,40 +1,31 @@
-import { useEffect, useState } from 'react'
-import { QRCodeSVG } from 'qrcode.react'
+import { useState } from 'react'
 import { X, ShieldCheck, Copy, Check, Loader2 } from 'lucide-react'
 import { authService } from '../../services/authService'
 
-export default function TwoFactorSetupModal({ user, onClose, onEnabled }) {
-  const [loading, setLoading] = useState(true)
-  const [secret, setSecret] = useState('')
-  const [otpauthUri, setOtpauthUri] = useState('')
+/**
+ * Activation 2FA: reçoit la préparation ({ secret, otpauthUri, qrCodeDataUrl })
+ * déjà obtenue au clic (évite double appel côté serveur), affiche le QR fourni
+ * par le backend si présent (sinon pas de QR image), puis renvoie les codes de
+ * secours une seule fois en mode réel.
+ */
+export default function TwoFactorSetupModal({ preparation, user, onClose, onEnabled }) {
+  const { secret, otpauthUri, qrCodeDataUrl } = preparation || {}
+  const [codesSecours, setCodesSecours] = useState(null)
+  const [codesConserves, setCodesConserves] = useState(false)
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    let cancelled = false
-    authService
-      .prepare2FA(user)
-      .then((data) => {
-        if (cancelled) return
-        setSecret(data.secret)
-        setOtpauthUri(data.otpauthUri)
-      })
-      .catch(() => {
-        if (!cancelled) setError('Impossible de préparer la double authentification.')
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [user])
+  const fermer = () => {
+    if (codesSecours && !codesConserves) return
+    if (codesSecours) onEnabled?.()
+    else onClose?.()
+  }
 
-  const handleCopy = async () => {
+  const handleCopy = async (texte = secret) => {
     try {
-      await navigator.clipboard.writeText(secret)
+      await navigator.clipboard.writeText(texte)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
@@ -51,11 +42,18 @@ export default function TwoFactorSetupModal({ user, onClose, onEnabled }) {
     setSubmitting(true)
     setError('')
     try {
-      const ok = await authService.enable2FA(user, secret, code)
-      if (ok) onEnabled()
-      else setError('Code invalide. Vérifiez le code affiché dans votre application.')
-    } catch {
-      setError('Une erreur est survenue. Réessayez.')
+      const result = await authService.enable2FA(user, secret, code)
+      if (!result?.ok) {
+        setError('Code invalide. Vérifiez le code affiché dans votre application.')
+        return
+      }
+      if (result.codesDeSecours && result.codesDeSecours.length) {
+        setCodesSecours(result.codesDeSecours)
+      } else {
+        onEnabled?.()
+      }
+    } catch (echec) {
+      setError(echec?.response?.data?.message || echec?.message || 'Une erreur est survenue. Réessayez.')
     } finally {
       setSubmitting(false)
     }
@@ -67,7 +65,7 @@ export default function TwoFactorSetupModal({ user, onClose, onEnabled }) {
       aria-modal="true"
       aria-labelledby="tfa-title"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget) fermer()
       }}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
@@ -102,7 +100,7 @@ export default function TwoFactorSetupModal({ user, onClose, onEnabled }) {
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={fermer}
             aria-label="Fermer"
             style={{
               border: 'none', background: 'transparent', cursor: 'pointer',
@@ -115,26 +113,55 @@ export default function TwoFactorSetupModal({ user, onClose, onEnabled }) {
         </div>
 
         <div style={{ padding: 20 }}>
-          {loading ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '32px 0', color: '#78716c', fontSize: 13 }}>
-              <Loader2 size={16} className="animate-spin" />
-              Préparation de la clé de sécurité…
+          {codesSecours ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#15803d', margin: 0 }}>
+                Double authentification activée.
+              </p>
+              <p style={{ fontSize: 13, color: '#57534e', margin: 0, lineHeight: 1.5 }}>
+                Voici vos codes de secours. Chacun permet une connexion si vous n’avez pas votre téléphone.
+                Conservez-les en lieu sûr : <strong>ils ne seront plus jamais affichés.</strong>
+              </p>
+              <pre style={{ margin: 0, padding: 12, borderRadius: 10, background: '#fafaf9', border: '1px solid #e7e5e4', fontSize: 14, lineHeight: 1.8, columns: 2, textAlign: 'center' }}>
+                {codesSecours.join('\n')}
+              </pre>
+              <button
+                type="button"
+                onClick={() => handleCopy(codesSecours.join('\n'))}
+                style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', fontSize: 12, fontWeight: 600, color: '#007FE1', background: 'white', border: '1px solid #e7e5e4', borderRadius: 9, cursor: 'pointer' }}
+              >
+                <Copy size={14} /> Copier les codes
+              </button>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#1c1917' }}>
+                <input type="checkbox" checked={codesConserves} onChange={(e) => setCodesConserves(e.target.checked)} />
+                J’ai conservé mes codes de secours
+              </label>
+              <button
+                type="button"
+                disabled={!codesConserves}
+                onClick={onEnabled}
+                style={{ alignSelf: 'flex-end', padding: '9px 18px', fontSize: 13, fontWeight: 700, color: 'white', background: codesConserves ? '#007FE1' : '#93c5fd', border: 'none', borderRadius: 10, cursor: codesConserves ? 'pointer' : 'not-allowed' }}
+              >
+                Terminer
+              </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <p style={{ fontSize: 13, color: '#57534e', margin: 0, lineHeight: 1.5 }}>
-                1. Scannez ce QR code avec 2FAS.
+                1. {qrCodeDataUrl ? 'Scannez ce QR code avec 2FAS.' : 'Ajoutez cette clé dans votre application 2FAS (saisie manuelle).'}
               </p>
 
-              <div style={{
-                alignSelf: 'center', padding: 12, background: 'white',
-                border: '1px solid #e7e5e4', borderRadius: 14,
-              }}>
-                {otpauthUri && <QRCodeSVG value={otpauthUri} size={180} />}
-              </div>
+              {qrCodeDataUrl && (
+                <div style={{
+                  alignSelf: 'center', padding: 12, background: 'white',
+                  border: '1px solid #e7e5e4', borderRadius: 14,
+                }}>
+                  <img src={qrCodeDataUrl} alt="QR code à scanner avec votre application" width={180} height={180} />
+                </div>
+              )}
 
               <p style={{ fontSize: 12, color: '#78716c', margin: 0, textAlign: 'center' }}>
-                Ou saisissez cette clé manuellement :
+                Clé secrète (saisie manuelle) :
               </p>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 8,
@@ -149,7 +176,7 @@ export default function TwoFactorSetupModal({ user, onClose, onEnabled }) {
                 </code>
                 <button
                   type="button"
-                  onClick={handleCopy}
+                  onClick={() => handleCopy(secret)}
                   aria-label="Copier la clé"
                   style={{
                     border: 'none', background: 'transparent', cursor: 'pointer',
@@ -187,7 +214,7 @@ export default function TwoFactorSetupModal({ user, onClose, onEnabled }) {
               </div>
 
               <p style={{ fontSize: 11, color: '#a8a29e', margin: 0 }}>
-                Le code change toutes les 30 s. Vérifiez que l'heure de votre téléphone est synchronisée automatiquement.
+                Le code change toutes les 30 s. Vérifiez que l’heure de votre téléphone est synchronisée automatiquement.
               </p>
 
               {error && (

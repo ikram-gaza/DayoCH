@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   User, Mail, Phone, Building2, Briefcase, Hash,
   Camera, Save, Lock, Eye, EyeOff, CheckCircle2,
@@ -8,6 +8,8 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import { authService } from '../../services/authService'
 import TwoFactorSetupModal from '../../components/profil/TwoFactorSetupModal'
+
+const REGLE_MOT_DE_PASSE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{10,}$/
 
 const messageErreur = (echec) =>
   echec?.response?.data?.message || echec?.message || 'Une erreur est survenue.'
@@ -146,8 +148,9 @@ function Toast({ message, onClose }) {
 
 // ── Page principale ───────────────────────────────────────────
 export default function ProfilPage() {
-  const { user, updateUser, mettreAJourProfil, changerMotDePasse } = useAuth()
+  const { user, updateUser, mettreAJourProfil, changerMotDePasse, logout } = useAuth()
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const fileInputRef = useRef(null)
 
   const [photo, setPhoto] = useState(user?.photo || null)
@@ -163,7 +166,8 @@ export default function ProfilPage() {
   const [saving, setSaving] = useState(false)
   const [savingPwd, setSavingPwd] = useState(false)
   const [pwdError, setPwdError] = useState('')
-  const [show2FASetup, setShow2FASetup] = useState(false)
+  const [preparation2FA, setPreparation2FA] = useState(null)
+  const [preparant2FA, setPreparant2FA] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -219,15 +223,23 @@ export default function ProfilPage() {
   const handleSavePassword = async () => {
     setPwdError('')
     if (!passwords.ancien) return setPwdError('Saisissez votre mot de passe actuel.')
-    if (passwords.nouveau.length < 8) return setPwdError('Le nouveau mot de passe doit faire au moins 8 caractères.')
+    if (!authService.isMock && !REGLE_MOT_DE_PASSE.test(passwords.nouveau)) {
+      return setPwdError('10 caractères minimum, avec une majuscule, une minuscule, un chiffre et un caractère spécial.')
+    }
+    if (authService.isMock && passwords.nouveau.length < 8) {
+      return setPwdError('Le nouveau mot de passe doit faire au moins 8 caractères.')
+    }
     if (passwords.nouveau !== passwords.confirmation) return setPwdError('Les mots de passe ne correspondent pas.')
     setSavingPwd(true)
     try {
       await changerMotDePasse({ ancien: passwords.ancien, nouveau: passwords.nouveau })
       setPasswords({ ancien: '', nouveau: '', confirmation: '' })
-      showToast(authService.isMock
-        ? 'Mot de passe modifié localement (mode mock).'
-        : 'Mot de passe modifié avec succès.')
+      if (!authService.isMock) {
+        await logout()
+        navigate('/login', { replace: true })
+        return
+      }
+      showToast('Mot de passe modifié localement (mode mock).')
     } catch (echec) {
       setPwdError(messageErreur(echec))
     } finally {
@@ -242,7 +254,15 @@ export default function ProfilPage() {
       return
     }
     if (!user?.twoFactorEnabled) {
-      setShow2FASetup(true)
+      try {
+        setPreparant2FA(true)
+        const preparation = await authService.prepare2FA(user)
+        setPreparation2FA(preparation)
+      } catch (echec) {
+        showToast(messageErreur(echec))
+      } finally {
+        setPreparant2FA(false)
+      }
       return
     }
     if (!window.confirm('Désactiver la double authentification ?')) return
@@ -265,7 +285,7 @@ export default function ProfilPage() {
 
   const handle2FAEnabled = () => {
     updateUser({ twoFactorEnabled: true })
-    setShow2FASetup(false)
+    setPreparation2FA(null)
     showToast('Double authentification activée.')
   }
 
@@ -432,7 +452,7 @@ export default function ProfilPage() {
                   <div>
                     <p style={{ fontSize: 13, color: '#1c1917', fontWeight: 600, margin: 0 }}>Authentification 2FA</p>
                     <p style={{ fontSize: 11, color: '#a8a29e', margin: 0 }}>
-                      {is2FAMandatory
+                      {preparant2FA ? 'Préparation…' : is2FAMandatory
                         ? (user?.twoFactorEnabled ? 'Obligatoire pour votre rôle' : 'Activation obligatoire pour votre rôle')
                         : (user?.twoFactorEnabled ? 'Un code sera demandé à la connexion' : 'Activer pour sécuriser votre compte')}
                     </p>
@@ -441,7 +461,7 @@ export default function ProfilPage() {
                 <button
                   type="button"
                   onClick={handleToggle2FA}
-                  disabled={is2FAMandatory && user?.twoFactorEnabled}
+                  disabled={preparant2FA || (is2FAMandatory && user?.twoFactorEnabled)}
                   aria-pressed={Boolean(user?.twoFactorEnabled)}
                   aria-label={
                     is2FAMandatory && user?.twoFactorEnabled
@@ -450,10 +470,11 @@ export default function ProfilPage() {
                   }
                   style={{
                     width: 40, height: 22, borderRadius: 999, border: 'none', padding: 0,
-                    cursor: is2FAMandatory && user?.twoFactorEnabled ? 'not-allowed' : 'pointer',
+                    cursor: (preparant2FA || (is2FAMandatory && user?.twoFactorEnabled)) ? 'not-allowed' : 'pointer',
                     position: 'relative', flexShrink: 0,
                     background: user?.twoFactorEnabled ? '#007FE1' : '#d6d3d1',
                     transition: 'background 0.15s',
+                    opacity: preparant2FA ? 0.7 : 1,
                   }}
                 >
                   <span style={{
@@ -644,10 +665,11 @@ export default function ProfilPage() {
       {/* Toast */}
       {toast && <Toast message={toast} />}
 
-      {show2FASetup && (
+      {preparation2FA && (
         <TwoFactorSetupModal
+          preparation={preparation2FA}
           user={user}
-          onClose={() => setShow2FASetup(false)}
+          onClose={() => setPreparation2FA(null)}
           onEnabled={handle2FAEnabled}
         />
       )}
