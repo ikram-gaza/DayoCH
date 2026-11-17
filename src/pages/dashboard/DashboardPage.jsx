@@ -256,7 +256,7 @@ export default function DashboardPage() {
             </h1>
             <p style={{ fontSize: 13, color: 'rgba(219,234,254,0.8)', marginTop: 6 }}>
               {user?.filiale}
-              {user?.role && <> · {user.role === 'super_admin' ? 'Super Administrateur' : user.role.replace('_', ' ')}</>}
+              {user?.role && <> · {user.roleLabel || (user.role === 'super_admin' ? 'Super Administrateur' : user.role.replace('_', ' '))}</>}
             </p>
           </div>
           {/* Avatar */}

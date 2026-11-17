@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import LoginPage from './pages/auth/LoginPage'
 import TwoFactorPage from './pages/auth/TwoFactorPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
@@ -25,14 +25,25 @@ const ADMIN_ROLES = ['super_admin']
 
 // Route protégée : redirige vers /login si non connecté
 function PrivateRoute({ children }) {
-  const { user } = useAuth()
-  return user ? children : <Navigate to="/login" replace />
+  const { user, loading } = useAuth()
+  const location = useLocation()
+  if (loading) return <div className="p-6">Chargement…</div>
+  if (!user) return <Navigate to="/login" replace />
+  if (user.doitChangerMotDePasse && !location.pathname.startsWith('/profil')) {
+    return <Navigate to="/profil?changer-mot-de-passe=1" replace />
+  }
+  return children
 }
 
 // Route protégée par rôle : redirige vers /dashboard si le rôle n'est pas autorisé
 function RoleRoute({ roles, children }) {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
+  const location = useLocation()
+  if (loading) return <div className="p-6">Chargement…</div>
   if (!user) return <Navigate to="/login" replace />
+  if (user.doitChangerMotDePasse && !location.pathname.startsWith('/profil')) {
+    return <Navigate to="/profil?changer-mot-de-passe=1" replace />
+  }
   if (roles && !roles.includes(user.role)) return <Navigate to="/dashboard" replace />
   return children
 }

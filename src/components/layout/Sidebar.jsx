@@ -177,7 +177,7 @@ export default function Sidebar({ onLogout }) {
               {fullName}
             </p>
             <p style={{ fontSize: 11, color: '#78716c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {roleLabels[user?.role] ?? user?.role}
+              {user?.roleLabel ?? roleLabels[user?.role] ?? user?.role}
             </p>
           </div>
         </div>

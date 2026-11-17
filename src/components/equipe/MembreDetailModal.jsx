@@ -3,7 +3,7 @@ import {
   Calendar, MessageSquare, Inbox,
 } from 'lucide-react'
 import {
-  ROLES_UTILISATEUR,
+  infoRole,
   STATUTS_UTILISATEUR,
 } from '../../services/utilisateursService'
 import {
@@ -49,7 +49,7 @@ function EmptyLine({ children }) {
 export default function MembreDetailModal({ isOpen, membre, conges = [], sollicitations = [], onClose }) {
   if (!isOpen || !membre) return null
 
-  const role = ROLES_UTILISATEUR[membre.role] || ROLES_UTILISATEUR.employe
+  const role = infoRole(membre.role)
   const statut = STATUTS_UTILISATEUR[membre.statut] || STATUTS_UTILISATEUR.actif
   const avatar = `${membre.prenom?.[0] || ''}${membre.nom?.[0] || ''}`.toUpperCase()
 

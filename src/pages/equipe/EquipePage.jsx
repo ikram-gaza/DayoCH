@@ -6,7 +6,7 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import {
   utilisateursService,
-  ROLES_UTILISATEUR,
+  infoRole,
   STATUTS_UTILISATEUR,
 } from '../../services/utilisateursService'
 import { congesService } from '../../services/congesService'
@@ -47,7 +47,7 @@ function StatCard({ label, value, hint, icon: Icon, color, bg }) {
 }
 
 function MembreCard({ membre, enConge, enAttente, onOpen }) {
-  const role = ROLES_UTILISATEUR[membre.role] || ROLES_UTILISATEUR.employe
+  const role = infoRole(membre.role)
   const statut = STATUTS_UTILISATEUR[membre.statut] || STATUTS_UTILISATEUR.actif
   const avatar = `${membre.prenom?.[0] || ''}${membre.nom?.[0] || ''}`.toUpperCase()
 

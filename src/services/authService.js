@@ -1,35 +1,242 @@
 import axios from 'axios'
 import { generateSecret, verifyTOTP, buildOtpauthUri } from '../utils/totp'
 
-// URL de base de l'API backend (à configurer selon l'environnement)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-
-// Tant que le backend n'est pas branché, un mock local est utilisé par défaut.
-// Passer VITE_USE_MOCK_AUTH=false pour appeler la vraie API.
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, '')
 const USE_MOCK = import.meta.env.VITE_USE_MOCK_AUTH !== 'false'
 
 const SESSION_KEY = 'dayoch_session_v1'
+const REFRESH_KEY = 'dayopi.refreshToken'
+const LEGACY_TOKEN_KEY = 'token'
+const TWO_FA_KEY = 'dayoch_2fa_secrets_v1'
+const PENDING_2FA_KEY = 'dayoch_2fa_pending_v1'
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
+const ROLES_UI = {
+  SUPER_ADMIN: 'super_admin',
+  ADMIN_FILIALE: 'super_admin',
+  GERANT: 'manager',
+  RESPONSABLE_STOCK: 'gestionnaire_stock',
+  RESPONSABLE_SERVICE: 'manager',
+  AGENT: 'employe',
+}
 
-// Intercepteur pour ajouter le token JWT à chaque requête
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
+const ROLE_LABELS = {
+  SUPER_ADMIN: 'Super administrateur',
+  ADMIN_FILIALE: 'Administrateur filiale',
+  GERANT: 'Gérant',
+  RESPONSABLE_STOCK: 'Responsable stock',
+  RESPONSABLE_SERVICE: 'Responsable service',
+  AGENT: 'Agent',
+  super_admin: 'Super administrateur',
+  manager: 'Manager',
+  employe: 'Employé',
+  gestionnaire_stock: 'Gestionnaire stock',
+}
+
+const ROLE_BACKEND_PAR_UI = {
+  super_admin: 'SUPER_ADMIN',
+  manager: 'GERANT',
+  employe: 'AGENT',
+  gestionnaire_stock: 'RESPONSABLE_STOCK',
+}
+
+const ORDRE_ROLES = [
+  'SUPER_ADMIN',
+  'ADMIN_FILIALE',
+  'GERANT',
+  'RESPONSABLE_SERVICE',
+  'RESPONSABLE_STOCK',
+  'AGENT',
+]
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-// Comptes de démonstration : l'identifiant saisi détermine le rôle.
-// (mot de passe ignoré en mode mock)
+let accessToken = null
+let sessionCourante = null
+const abonnesSessionPerdue = new Set()
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 20000,
+  headers: { Accept: 'application/json' },
+})
+
+export function surSessionPerdue(abonne) {
+  abonnesSessionPerdue.add(abonne)
+  return () => abonnesSessionPerdue.delete(abonne)
+}
+
+function notifierSessionPerdue() {
+  abonnesSessionPerdue.forEach((abonne) => abonne())
+}
+
+function lireStockage(cle) {
+  try {
+    return localStorage.getItem(cle)
+  } catch {
+    return null
+  }
+}
+
+function ecrireStockage(cle, valeur) {
+  try {
+    if (valeur === null || valeur === undefined) localStorage.removeItem(cle)
+    else localStorage.setItem(cle, valeur)
+  } catch {
+    return
+  }
+}
+
+function lireJson(cle) {
+  try {
+    const raw = lireStockage(cle)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function ecrireJson(cle, valeur) {
+  ecrireStockage(cle, valeur ? JSON.stringify(valeur) : null)
+}
+
+function lireSessionStockee() {
+  return lireJson(SESSION_KEY)
+}
+
+function definirSession(session) {
+  sessionCourante = session
+  if (USE_MOCK) ecrireJson(SESSION_KEY, session)
+}
+
+function getSession() {
+  if (sessionCourante) return sessionCourante
+  return USE_MOCK ? lireSessionStockee() : null
+}
+
+function effacerSession() {
+  sessionCourante = null
+  accessToken = null
+  ecrireStockage(SESSION_KEY, null)
+  ecrireStockage(REFRESH_KEY, null)
+  ecrireStockage(LEGACY_TOKEN_KEY, null)
+}
+
+function persistAuthenticated(user, tokens = {}) {
+  const acces = tokens.accessToken || tokens.token || null
+  if (acces) accessToken = acces
+  if (tokens.refreshToken) ecrireStockage(REFRESH_KEY, tokens.refreshToken)
+  if (USE_MOCK && acces) ecrireStockage(LEGACY_TOKEN_KEY, acces)
+  const session = { user, pendingUser: null, token: acces }
+  definirSession(session)
+  return session
+}
+
+function normaliserUtilisateur(brut = {}, extra = {}) {
+  const rolesBruts = Array.isArray(brut.roles)
+    ? brut.roles
+    : brut.role
+      ? [brut.role]
+      : []
+  const roles = rolesBruts
+    .map((role) => (typeof role === 'string' ? role : role?.code))
+    .filter(Boolean)
+  const roleBackend = ORDRE_ROLES.find((role) => roles.includes(role)) || roles[0] || 'AGENT'
+  const nomComplet = brut.nomComplet || `${brut.prenom || ''} ${brut.nom || ''}`.trim()
+  const morceaux = nomComplet.split(/\s+/).filter(Boolean)
+  const filiale = brut.filiale && typeof brut.filiale === 'object' ? brut.filiale : null
+  const brutFlag = brut.doitChangerMotDePasse ?? brut.mustChangePassword ?? brut.passwordChangeRequired ??
+    brut.forceChangePassword ?? brut.must_change_password ?? brut.requirePasswordChange ??
+    brut.mustResetPassword ?? brut.changementMotDePasseRequis ?? brut.changementMotDePasseObligatoire ??
+    brut.premiereConnexion ?? brut.firstLogin ??
+    extra.doitChangerMotDePasse ?? extra.mustChangePassword ?? extra.passwordChangeRequired ?? extra.forceChangePassword ??
+    extra.requirePasswordChange ?? extra.mustResetPassword ?? extra.changementMotDePasseRequis ??
+    extra.changementMotDePasseObligatoire ?? extra.premiereConnexion ?? extra.firstLogin
+  const doitChangerMotDePasse = [false, 'false', 0, '0', 'False', null, undefined].includes(brutFlag)
+    ? false
+    : Boolean(brutFlag)
+
+  return {
+    ...brut,
+    nom: brut.nom || morceaux.slice(1).join(' ') || '',
+    prenom: brut.prenom || morceaux[0] || '',
+    email: brut.email || null,
+    matricule: brut.matricule || '',
+    telephone: brut.telephone || brut.agent?.telephone || '',
+    filiale: filiale?.nom || (typeof brut.filiale === 'string' ? brut.filiale : '') || brut.filialeId || '',
+    filialeId: brut.filialeId ?? filiale?.id ?? null,
+    poste: brut.poste || brut.agent?.poste || brut.agent?.fonction || '',
+    role: ROLES_UI[roleBackend] || 'employe',
+    roleBackend,
+    roleLabel: ROLE_LABELS[roleBackend] || roleBackend,
+    roles,
+    permissions: Array.isArray(brut.permissions) ? brut.permissions : [],
+    estGerant: Boolean(brut.estGerant),
+    doitChangerMotDePasse,
+    twoFactorEnabled: Boolean(brut.twoFactorEnabled ?? brut.twoFactorActif ?? brut.isTwoFactorEnabled),
+  }
+}
+
+function enrichirUtilisateurMock(user) {
+  const roleBackend = ROLE_BACKEND_PAR_UI[user.role] || 'AGENT'
+  return {
+    ...user,
+    roleBackend,
+    roleLabel: ROLE_LABELS[user.role] || roleBackend,
+    roles: [roleBackend],
+    permissions: [],
+  }
+}
+
+api.interceptors.request.use((config) => {
+  const token = accessToken || lireStockage(LEGACY_TOKEN_KEY)
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+let rafraichissementEnCours = null
+
+async function rafraichir() {
+  const refresh = lireStockage(REFRESH_KEY)
+  if (!refresh) return false
+
+  rafraichissementEnCours ??= (async () => {
+    try {
+      const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken: refresh })
+      const acces = data.accessToken || data.token
+      if (!acces) return false
+      accessToken = acces
+      if (data.refreshToken) ecrireStockage(REFRESH_KEY, data.refreshToken)
+      return true
+    } catch {
+      return false
+    } finally {
+      rafraichissementEnCours = null
+    }
+  })()
+
+  return rafraichissementEnCours
+}
+
+api.interceptors.response.use(
+  (reponse) => reponse,
+  async (echec) => {
+    if (!axios.isAxiosError(echec) || !echec.config) throw echec
+
+    const config = echec.config
+    const url = config.url || ''
+    const sansRafraichissement = /\/auth\/(login|refresh|logout|2fa\/verifier)/.test(url)
+
+    if (echec.response?.status === 401 && !config._rejoue && !sansRafraichissement) {
+      config._rejoue = true
+      if (await rafraichir()) return api.request(config)
+      effacerSession()
+      notifierSessionPerdue()
+    }
+
+    throw echec
+  },
+)
+
 const MOCK_USERS = {
   'super_admin': {
     id: 1, nom: 'KOTCHOFA', prenom: 'Boris',
@@ -59,132 +266,81 @@ const MOCK_USERS = {
 }
 
 const MOCK_USER = MOCK_USERS.super_admin
-
 const PRIVILEGED_ROLES = ['super_admin', 'manager']
-
-// ── Persistance de session ──
-function readSession() {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
-
-function writeSession(session) {
-  try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-  } catch {
-    // Stockage indisponible : on continue en mémoire
-  }
-}
-
-function clearSession() {
-  localStorage.removeItem(SESSION_KEY)
-  localStorage.removeItem('token')
-}
-
-function persistAuthenticated(user, token) {
-  const session = { user, pendingUser: null, token: token || null }
-  writeSession(session)
-  if (token) localStorage.setItem('token', token)
-  return session
-}
-
-// ── Secrets TOTP (mode mock) ──
-const TWO_FA_KEY = 'dayoch_2fa_secrets_v1'
-const PENDING_2FA_KEY = 'dayoch_2fa_pending_v1'
 
 function userKey(user) {
   return (user?.email || user?.matricule || String(user?.id || '')).toLowerCase()
 }
 
-function readSecrets() {
-  try {
-    return JSON.parse(localStorage.getItem(TWO_FA_KEY)) || {}
-  } catch {
-    return {}
-  }
-}
-
-function writeSecrets(secrets) {
-  try {
-    localStorage.setItem(TWO_FA_KEY, JSON.stringify(secrets))
-  } catch {
-    // Stockage indisponible : on continue sans persister
-  }
-}
-
 function getSecret(user) {
-  return readSecrets()[userKey(user)] || null
+  return lireJson(TWO_FA_KEY)?.[userKey(user)] || null
 }
 
 function setSecret(user, secret) {
-  const secrets = readSecrets()
+  const secrets = lireJson(TWO_FA_KEY) || {}
   if (secret) secrets[userKey(user)] = secret
   else delete secrets[userKey(user)]
-  writeSecrets(secrets)
-}
-
-function readPendingSecrets() {
-  try {
-    return JSON.parse(localStorage.getItem(PENDING_2FA_KEY)) || {}
-  } catch {
-    return {}
-  }
-}
-
-function writePendingSecrets(secrets) {
-  try {
-    localStorage.setItem(PENDING_2FA_KEY, JSON.stringify(secrets))
-  } catch {
-    // Stockage indisponible : on continue sans persister
-  }
+  ecrireJson(TWO_FA_KEY, secrets)
 }
 
 function getPendingSecret(user) {
-  return readPendingSecrets()[userKey(user)] || null
+  return lireJson(PENDING_2FA_KEY)?.[userKey(user)] || null
 }
 
 function setPendingSecret(user, secret) {
-  const secrets = readPendingSecrets()
+  const secrets = lireJson(PENDING_2FA_KEY) || {}
   if (secret) secrets[userKey(user)] = secret
   else delete secrets[userKey(user)]
-  writePendingSecrets(secrets)
+  ecrireJson(PENDING_2FA_KEY, secrets)
 }
 
 function clearPendingSecret(user) {
   setPendingSecret(user, null)
 }
 
-// Service d'authentification
 export const authService = {
   isMock: USE_MOCK,
-  getSession: readSession,
-  saveSession: writeSession,
+  getSession,
+  canRestoreSession: () => !USE_MOCK && Boolean(lireStockage(REFRESH_KEY)),
+  restoreSession: async () => {
+    if (USE_MOCK) return getSession()
 
-  // Connexion avec email ou matricule + mot de passe
+    try {
+      if (!(await rafraichir())) throw new Error('Session non reprise.')
+      const { data } = await api.get('/auth/profil')
+      const user = normaliserUtilisateur(data.utilisateur || data.user || data, data)
+      definirSession({ user, pendingUser: null, token: accessToken })
+      return getSession()
+    } catch {
+      effacerSession()
+      return null
+    }
+  },
+  saveSession: definirSession,
+
   login: async (identifier, password) => {
     if (!USE_MOCK) {
-      const { data } = await api.post('/auth/login', { identifier, password })
+      const { data } = await api.post('/auth/login', { identifiant: identifier, password })
 
-      // Le backend peut demander une vérification 2FA
-      if (data.requires2FA) {
-        const rawPending = data.pendingUser || data.user || null
-        const requiresSetup = Boolean(data.requiresSetup)
-        const pendingUser = requiresSetup
-          ? { ...rawPending, requiresSetup: true, setupSecret: data.secret }
-          : rawPending
-        writeSession({ user: null, pendingUser, token: null })
-        return { requires2FA: true, requiresSetup, user: null, pendingUser }
+      if (data.twoFactorRequired || data.requires2FA) {
+        const pendingUser = {
+          challengeToken: data.challengeToken || null,
+          requiresSetup: Boolean(data.requiresSetup),
+          setupSecret: data.secret || null,
+          email: identifier,
+        }
+        definirSession({ user: null, pendingUser, token: null })
+        return { requires2FA: true, requiresSetup: pendingUser.requiresSetup, user: null, pendingUser }
       }
 
-      const session = persistAuthenticated(data.user, data.token)
+      const user = normaliserUtilisateur(data.utilisateur || data.user || data, data)
+      const session = persistAuthenticated(user, {
+        accessToken: data.accessToken || data.token,
+        refreshToken: data.refreshToken,
+      })
       return { requires2FA: false, ...session }
     }
 
-    // ── Mode mock ──
     await delay(900)
     if (!identifier?.trim() || !password?.trim()) {
       throw new Error('Identifiant ou mot de passe incorrect.')
@@ -194,64 +350,71 @@ export const authService = {
     const base = MOCK_USERS[cle] ||
       Object.values(MOCK_USERS).find((u) => u.email.toLowerCase() === cle || u.matricule.toLowerCase() === cle) ||
       MOCK_USER
+    const utilisateur = enrichirUtilisateurMock(base)
 
-    const storedSecret = getSecret(base)
-    const mandatory = PRIVILEGED_ROLES.includes(base.role)
+    const storedSecret = getSecret(utilisateur)
+    const mandatory = PRIVILEGED_ROLES.includes(utilisateur.role)
     const twoFactorEnabled = mandatory || cle === '2fa' || Boolean(storedSecret)
-    const user = { ...base, twoFactorEnabled }
+    const user = { ...utilisateur, twoFactorEnabled }
 
     if (twoFactorEnabled) {
       const requiresSetup = !storedSecret
-
       let setupSecret = null
+
       if (requiresSetup) {
-        // Conserver le même secret tant qu'il n'a pas été validé : évite
-        // qu'un nouveau QR invalide le code déjà scanné dans 2FAS.
-        setupSecret = getPendingSecret(base)
+        setupSecret = getPendingSecret(utilisateur)
         if (!setupSecret) {
-          const currentSession = readSession()
+          const currentSession = getSession()
           const sameUser =
             currentSession?.pendingUser &&
-            userKey(currentSession.pendingUser) === userKey(base)
+            userKey(currentSession.pendingUser) === userKey(utilisateur)
           setupSecret = sameUser ? currentSession.pendingUser.setupSecret : null
         }
         if (!setupSecret) setupSecret = generateSecret()
-        setPendingSecret(base, setupSecret)
+        setPendingSecret(utilisateur, setupSecret)
       }
 
       const pendingUser = requiresSetup
         ? { ...user, requiresSetup: true, setupSecret }
         : { ...user, requiresSetup: false }
-      writeSession({ user: null, pendingUser, token: null })
+      definirSession({ user: null, pendingUser, token: null })
       return { requires2FA: true, requiresSetup, user: null, pendingUser }
     }
 
-    const session = persistAuthenticated(user, `mock-token-${user.id}`)
+    const session = persistAuthenticated(user, { accessToken: `mock-token-${user.id}` })
     return { requires2FA: false, ...session }
   },
 
-  // Vérification du code 2FA
   verify2FA: async (code) => {
     if (!USE_MOCK) {
-      const session = readSession()
-      const { data } = await api.post('/auth/verify-2fa', {
-        userId: session?.pendingUser?.id,
-        code,
-      })
-
-      if (data.token) {
-        const authenticated = persistAuthenticated(data.user, data.token)
-        return { success: true, ...authenticated }
+      const pending = getSession()?.pendingUser
+      if (!pending?.challengeToken) {
+        throw new Error('Session 2FA expirée. Veuillez vous reconnecter.')
       }
-      return { success: false }
+
+      try {
+        const { data } = await api.post('/auth/2fa/verifier', {
+          challengeToken: pending.challengeToken,
+          codeTotp: code,
+        })
+        const user = normaliserUtilisateur(data.utilisateur || data.user || data, data)
+        const session = persistAuthenticated(user, {
+          accessToken: data.accessToken || data.token,
+          refreshToken: data.refreshToken,
+        })
+        return { success: true, ...session }
+      } catch (echec) {
+        if ([400, 401, 422].includes(echec?.response?.status)) return { success: false }
+        throw echec
+      }
     }
 
-    // ── Mode mock ──
     await delay(700)
-    const session = readSession()
+    const session = getSession()
     if (!session?.pendingUser) {
       throw new Error('Session 2FA expirée. Veuillez vous reconnecter.')
     }
+
     const pending = session.pendingUser
     const secret = pending.setupSecret || getSecret(pending)
     if (!secret || !(await verifyTOTP(secret, code))) {
@@ -266,15 +429,18 @@ export const authService = {
     const user = { ...pending, twoFactorEnabled: true }
     delete user.requiresSetup
     delete user.setupSecret
-    const authenticated = persistAuthenticated(user, `mock-token-${user.id}`)
+    const authenticated = persistAuthenticated(user, { accessToken: `mock-token-${user.id}` })
     return { success: true, ...authenticated }
   },
 
-  // ── Double authentification TOTP (2FAS, etc.) ──
   prepare2FA: async (user) => {
     if (!USE_MOCK) {
-      const { data } = await api.post('/auth/2fa/setup', { userId: user?.id })
-      return { secret: data.secret, otpauthUri: data.otpauthUri }
+      const { data } = await api.post('/auth/2fa/preparer')
+      return {
+        secret: data.secret,
+        otpauthUri: data.otpauthUrl || data.otpauthUri,
+        qrCodeDataUrl: data.qrCodeDataUrl,
+      }
     }
 
     const secret = generateSecret()
@@ -289,15 +455,19 @@ export const authService = {
 
   refreshSetup: async (user) => {
     if (!USE_MOCK) {
-      const { data } = await api.post('/auth/2fa/setup', { userId: user?.id })
-      return { secret: data.secret, otpauthUri: data.otpauthUri }
+      const { data } = await api.post('/auth/2fa/preparer')
+      return {
+        secret: data.secret,
+        otpauthUri: data.otpauthUrl || data.otpauthUri,
+        qrCodeDataUrl: data.qrCodeDataUrl,
+      }
     }
 
     const secret = generateSecret()
     setPendingSecret(user, secret)
-    const session = readSession()
+    const session = getSession()
     if (session?.pendingUser) {
-      writeSession({
+      definirSession({
         ...session,
         pendingUser: { ...session.pendingUser, setupSecret: secret },
       })
@@ -313,8 +483,14 @@ export const authService = {
 
   enable2FA: async (user, secret, code) => {
     if (!USE_MOCK) {
-      const { data } = await api.post('/auth/2fa/enable', { userId: user?.id, secret, code })
-      return Boolean(data?.success)
+      try {
+        await api.post('/auth/2fa/activer', { codeTotp: code })
+        authService.updateUser({ twoFactorEnabled: true })
+        return true
+      } catch (echec) {
+        if ([400, 401, 422].includes(echec?.response?.status)) return false
+        throw echec
+      }
     }
 
     if (!(await verifyTOTP(secret, code))) return false
@@ -322,36 +498,66 @@ export const authService = {
     return true
   },
 
-  disable2FA: async (user) => {
+  disable2FA: async (user, credentials = {}) => {
     if (!USE_MOCK) {
-      await api.post('/auth/2fa/disable', { userId: user?.id })
-      return
+      const { password, codeTotp } = credentials
+      if (!password || !codeTotp) {
+        throw new Error('Le mot de passe et le code 2FA sont requis.')
+      }
+      await api.post('/auth/2fa/desactiver', { password, codeTotp })
+      authService.updateUser({ twoFactorEnabled: false })
+      return true
     }
+
     setSecret(user, null)
     clearPendingSecret(user)
+    return true
   },
 
-  has2FA: (user) => Boolean(getSecret(user)),
+  has2FA: (user) => (USE_MOCK ? Boolean(getSecret(user)) : Boolean(user?.twoFactorEnabled)),
 
-  // Mise à jour des données utilisateur dans la session
   updateUser: (updates) => {
-    const session = readSession()
+    const session = getSession()
     if (!session?.user) return null
     const next = { ...session, user: { ...session.user, ...updates } }
-    writeSession(next)
+    definirSession(next)
     return next
   },
 
-  // Déconnexion
+  mettreAJourProfil: async (updates = {}) => {
+    if (!USE_MOCK) {
+      throw new Error('La mise à jour du profil n’est pas disponible sur l’API actuelle.')
+    }
+
+    await delay(500)
+    return authService.updateUser(updates)?.user || null
+  },
+
+  changerMotDePasse: async ({ ancien, nouveau }) => {
+    if (!USE_MOCK) {
+      await api.post('/auth/mot-de-passe/changer', {
+        ancienPassword: ancien,
+        nouveauPassword: nouveau,
+      })
+      authService.updateUser({ doitChangerMotDePasse: false })
+      return true
+    }
+
+    await delay(500)
+    authService.updateUser({ doitChangerMotDePasse: false })
+    return true
+  },
+
   logout: async () => {
     if (!USE_MOCK) {
+      const refresh = lireStockage(REFRESH_KEY)
       try {
-        await api.post('/auth/logout')
-      } catch {
-        // Token déjà invalide : on nettoie quand même la session locale
+        if (refresh) await api.post('/auth/logout', { refreshToken: refresh })
+      } catch (echec) {
+        void echec
       }
     }
-    clearSession()
+    effacerSession()
   },
 }
 

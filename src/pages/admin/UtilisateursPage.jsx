@@ -1,14 +1,14 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   Users, UserPlus, Search, Pencil, KeyRound, ShieldCheck, ShieldOff,
-  UserCheck, UserX, Trash2, CheckCircle2, Mail, Phone,
+  UserCheck, UserX, Trash2, CheckCircle2, AlertCircle, Mail, Phone,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
   utilisateursService,
-  ROLES_UTILISATEUR,
+  infoRole,
+  messageErreur,
   STATUTS_UTILISATEUR,
-  FILIALES_UTILISATEUR,
 } from '../../services/utilisateursService'
 import UtilisateurModal from '../../components/utilisateurs/UtilisateurModal'
 
@@ -79,7 +79,11 @@ function IconAction({ title, onClick, color, hoverBg, disabled, children }) {
 export default function UtilisateursPage() {
   const { user } = useAuth()
 
-  const [utilisateurs, setUtilisateurs] = useState(() => utilisateursService.getAll())
+  const [utilisateurs, setUtilisateurs] = useState([])
+  const [rolesDisponibles, setRolesDisponibles] = useState(() => utilisateursService.getRolesDisponibles())
+  const [filiales, setFiliales] = useState(() => utilisateursService.getFilialesDisponibles())
+  const [chargement, setChargement] = useState(true)
+  const [erreurChargement, setErreurChargement] = useState('')
   const [recherche, setRecherche] = useState('')
   const [filtreRole, setFiltreRole] = useState('all')
   const [filtreFiliale, setFiltreFiliale] = useState('all')
@@ -89,7 +93,35 @@ export default function UtilisateursPage() {
   const [edition, setEdition] = useState(null)
   const [toastMessage, setToastMessage] = useState(null)
 
-  const recharger = () => setUtilisateurs([...utilisateursService.getAll()])
+  const recharger = async () => {
+    const liste = await utilisateursService.lister()
+    setUtilisateurs([...liste])
+  }
+
+  useEffect(() => {
+    let actif = true
+    const charger = async () => {
+      setChargement(true)
+      setErreurChargement('')
+      try {
+        const [liste, roles, filialesChargees] = await Promise.all([
+          utilisateursService.lister(),
+          utilisateursService.listerRoles(),
+          utilisateursService.listerFiliales(),
+        ])
+        if (!actif) return
+        setUtilisateurs([...liste])
+        setRolesDisponibles(roles)
+        setFiliales(filialesChargees)
+      } catch (echec) {
+        if (actif) setErreurChargement(messageErreur(echec))
+      } finally {
+        if (actif) setChargement(false)
+      }
+    }
+    charger()
+    return () => { actif = false }
+  }, [])
 
   const afficherToast = (msg) => {
     setToastMessage(msg)
@@ -117,46 +149,73 @@ export default function UtilisateursPage() {
   const ouvrirCreation = () => { setEdition(null); setShowModal(true) }
   const ouvrirEdition = (u) => { setEdition(u); setShowModal(true) }
 
-  const handleSubmit = (data) => {
-    if (edition) {
-      utilisateursService.modifierUtilisateur(edition.id, data)
-      afficherToast('Collaborateur mis à jour avec succès.')
-    } else {
-      utilisateursService.creerUtilisateur(data)
-      afficherToast('Collaborateur créé avec succès.')
+  const handleSubmit = async (data) => {
+    try {
+      if (edition) {
+        await utilisateursService.modifier(edition.id, data)
+        afficherToast('Collaborateur mis à jour avec succès.')
+      } else {
+        await utilisateursService.creer(data)
+        afficherToast('Collaborateur créé avec succès.')
+      }
+      await recharger()
+      return true
+    } catch (echec) {
+      afficherToast(`Erreur : ${messageErreur(echec)}`)
+      return false
     }
-    recharger()
   }
 
-  const handleBasculerStatut = (u) => {
+  const handleBasculerStatut = async (u) => {
     const activer = u.statut !== 'actif'
     if (!activer && !window.confirm(`Désactiver le compte de ${u.prenom} ${u.nom} ? Il ne pourra plus se connecter.`)) return
-    utilisateursService.changerStatut(u.id, activer ? 'actif' : 'inactif')
-    recharger()
-    afficherToast(activer ? 'Compte réactivé.' : 'Compte désactivé.')
+    try {
+      await utilisateursService.changerStatut(u.id, activer ? 'actif' : 'inactif')
+      await recharger()
+      afficherToast(activer ? 'Compte réactivé.' : 'Compte désactivé.')
+    } catch (echec) {
+      afficherToast(`Erreur : ${messageErreur(echec)}`)
+    }
   }
 
-  const handleBasculer2FA = (u) => {
-    utilisateursService.basculer2FA(u.id)
-    recharger()
-    afficherToast(u.twoFactorEnabled ? 'Double authentification désactivée.' : 'Double authentification activée.')
+  const handleBasculer2FA = async (u) => {
+    try {
+      await utilisateursService.basculer2FA(u.id, !u.twoFactorEnabled)
+      await recharger()
+      afficherToast(u.twoFactorEnabled ? 'Double authentification désactivée.' : 'Double authentification activée.')
+    } catch (echec) {
+      afficherToast(`Erreur : ${messageErreur(echec)}`)
+    }
   }
 
-  const handleReinitialiser = (u) => {
+  const handleReinitialiser = async (u) => {
     if (!window.confirm(`Réinitialiser le mot de passe de ${u.prenom} ${u.nom} ?`)) return
-    const motDePasse = utilisateursService.reinitialiserMotDePasse()
-    window.alert(
-      `Mot de passe temporaire pour ${u.prenom} ${u.nom} :\n\n${motDePasse}\n\n` +
-      'Communiquez-le au collaborateur, il devra le changer à la première connexion.'
-    )
-    afficherToast('Mot de passe réinitialisé.')
+    try {
+      const motDePasse = await utilisateursService.reinitialiserMotDePasse(u.id)
+      if (motDePasse) {
+        window.alert(
+          `Mot de passe temporaire pour ${u.prenom} ${u.nom} :\n\n${motDePasse}\n\n` +
+          'Communiquez-le au collaborateur, il devra le changer à la première connexion.'
+        )
+      } else {
+        window.alert(`La demande de réinitialisation de ${u.prenom} ${u.nom} a été enregistrée.`)
+      }
+      await recharger()
+      afficherToast('Réinitialisation du mot de passe traitée.')
+    } catch (echec) {
+      afficherToast(`Erreur : ${messageErreur(echec)}`)
+    }
   }
 
-  const handleSupprimer = (u) => {
+  const handleSupprimer = async (u) => {
     if (!window.confirm(`Supprimer définitivement le compte de ${u.prenom} ${u.nom} ?`)) return
-    utilisateursService.supprimerUtilisateur(u.id)
-    recharger()
-    afficherToast('Collaborateur supprimé.')
+    try {
+      await utilisateursService.supprimer(u.id)
+      await recharger()
+      afficherToast('Collaborateur supprimé.')
+    } catch (echec) {
+      afficherToast(`Erreur : ${messageErreur(echec)}`)
+    }
   }
 
   return (
@@ -243,8 +302,8 @@ export default function UtilisateursPage() {
             }}
           >
             <option value="all">Tous les rôles</option>
-            {Object.entries(ROLES_UTILISATEUR).map(([id, r]) => (
-              <option key={id} value={id}>{r.label}</option>
+            {rolesDisponibles.map((r) => (
+              <option key={r.code} value={r.code}>{r.label}</option>
             ))}
           </select>
 
@@ -258,8 +317,8 @@ export default function UtilisateursPage() {
             }}
           >
             <option value="all">Toutes les filiales</option>
-            {FILIALES_UTILISATEUR.map((f) => (
-              <option key={f.code} value={f.nom}>{f.nom}</option>
+            {filiales.map((f) => (
+              <option key={f.id || f.code || f.nom} value={f.nom}>{f.nom}</option>
             ))}
           </select>
 
@@ -279,6 +338,28 @@ export default function UtilisateursPage() {
           </select>
         </div>
       </div>
+
+      {erreurChargement && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: '#FEF2F1', border: '1px solid #fecaca',
+          borderRadius: 12, padding: '10px 14px', color: '#b91c1c', fontSize: 13,
+        }}>
+          <AlertCircle size={16} style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1 }}>{erreurChargement}</span>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            style={{
+              border: '1px solid #fecaca', background: 'white', color: '#b91c1c',
+              padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Réessayer
+          </button>
+        </div>
+      )}
 
       {/* Tableau */}
       <div style={{
@@ -302,8 +383,22 @@ export default function UtilisateursPage() {
               </tr>
             </thead>
             <tbody>
-              {listeFiltree.map((u) => {
-                const role = ROLES_UTILISATEUR[u.role] || ROLES_UTILISATEUR.employe
+              {chargement && (
+                <tr>
+                  <td colSpan={7} style={{ padding: '28px 16px', textAlign: 'center', color: '#78716c', fontSize: 13 }}>
+                    Chargement des collaborateurs…
+                  </td>
+                </tr>
+              )}
+              {!chargement && listeFiltree.length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ padding: '28px 16px', textAlign: 'center', color: '#78716c', fontSize: 13 }}>
+                    Aucun collaborateur ne correspond aux critères.
+                  </td>
+                </tr>
+              )}
+              {!chargement && listeFiltree.map((u) => {
+                const role = infoRole(u.role)
                 const statut = STATUTS_UTILISATEUR[u.statut] || STATUTS_UTILISATEUR.actif
                 const avatar = avatarColor(`${u.prenom} ${u.nom}`)
                 const estMoi = u.id === user?.id
@@ -462,6 +557,10 @@ export default function UtilisateursPage() {
           onClose={() => setShowModal(false)}
           utilisateur={edition}
           onSubmit={handleSubmit}
+          utilisateurs={utilisateurs}
+          roles={rolesDisponibles}
+          filiales={filiales}
+          isMock={utilisateursService.isMock}
         />
       )}
     </div>

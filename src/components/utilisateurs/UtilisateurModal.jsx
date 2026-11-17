@@ -1,54 +1,76 @@
 import { useState } from 'react'
-import { X, UserPlus, UserCog, AlertCircle, ShieldCheck } from 'lucide-react'
+import { X, User, Mail, Phone, Building2, Briefcase, Hash, Shield } from 'lucide-react'
 import {
   utilisateursService,
   ROLES_UTILISATEUR,
-  STATUTS_UTILISATEUR,
   FILIALES_UTILISATEUR,
 } from '../../services/utilisateursService'
 
-const inputStyle = {
+const Field = ({ label, id, icon: Icon, error, hint, required, children }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+    <label htmlFor={id} style={{ fontSize: 12, fontWeight: 600, color: '#57534e' }}>
+      {label}{required && <span style={{ color: '#EF4340' }}> *</span>}
+    </label>
+    <div style={{ position: 'relative' }}>
+      {Icon && (
+        <Icon size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#a8a29e', pointerEvents: 'none' }} />
+      )}
+      {children(Icon ? 34 : 12)}
+    </div>
+    {hint && !error && <span style={{ fontSize: 11, color: '#78716c' }}>{hint}</span>}
+    {error && <span style={{ fontSize: 11, color: '#b91c1c' }}>{error}</span>}
+  </div>
+)
+
+const inputStyle = (padLeft, hasError) => ({
   width: '100%', boxSizing: 'border-box',
-  padding: '10px 14px', fontSize: 14, borderRadius: 12,
-  border: '1px solid #d6d3d1', outline: 'none', color: '#1c1917',
-  background: 'white', fontFamily: 'inherit',
-}
+  padding: `9px 12px 9px ${padLeft}px`,
+  fontSize: 13, borderRadius: 10,
+  border: `1px solid ${hasError ? '#fca5a5' : '#e7e5e4'}`,
+  outline: 'none', color: '#1c1917', background: 'white',
+})
 
-const labelStyle = {
-  fontSize: 12, fontWeight: 700, color: '#78716c',
-  textTransform: 'uppercase', letterSpacing: '0.06em',
-  display: 'block', marginBottom: 8,
-}
-
-function focusBorder(e) {
-  e.target.style.borderColor = '#007FE1'
-  e.target.style.boxShadow = '0 0 0 3px rgba(0,127,225,0.12)'
-}
-
-function blurBorder(e) {
-  e.target.style.borderColor = '#d6d3d1'
-  e.target.style.boxShadow = 'none'
-}
-
-export default function UtilisateurModal({ isOpen, onClose, utilisateur, onSubmit }) {
+export default function UtilisateurModal({
+  isOpen,
+  onClose,
+  utilisateur,
+  onSubmit,
+  utilisateurs = [],
+  roles = [],
+  filiales = [],
+  isMock = false,
+}) {
   const estEdition = Boolean(utilisateur)
+  const rolesDisponibles = roles.length
+    ? roles
+    : Object.entries(ROLES_UTILISATEUR).map(([code, info]) => ({ code, ...info }))
+  const filialesDisponibles = filiales.length ? filiales : FILIALES_UTILISATEUR
 
   const [prenom, setPrenom] = useState(utilisateur?.prenom || '')
   const [nom, setNom] = useState(utilisateur?.nom || '')
   const [email, setEmail] = useState(utilisateur?.email || '')
   const [telephone, setTelephone] = useState(utilisateur?.telephone || '')
-  const [role, setRole] = useState(utilisateur?.role || 'employe')
-  const [filiale, setFiliale] = useState(utilisateur?.filiale || FILIALES_UTILISATEUR[1].nom)
+  const [role, setRole] = useState(utilisateur?.role || rolesDisponibles[0]?.code || 'employe')
+  const [filiale, setFiliale] = useState(
+    utilisateur?.filialeId ||
+    utilisateur?.filiale ||
+    filialesDisponibles[1]?.id ||
+    filialesDisponibles[1]?.nom ||
+    filialesDisponibles[0]?.id ||
+    filialesDisponibles[0]?.nom ||
+    ''
+  )
   const [poste, setPoste] = useState(utilisateur?.poste || '')
   const [matricule, setMatricule] = useState(utilisateur?.matricule || '')
   const [dateEmbauche, setDateEmbauche] = useState(utilisateur?.dateEmbauche || '')
   const [statut, setStatut] = useState(utilisateur?.statut || 'actif')
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(Boolean(utilisateur?.twoFactorEnabled))
+  const [passwordInitial, setPasswordInitial] = useState('')
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   if (!isOpen) return null
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
@@ -57,67 +79,89 @@ export default function UtilisateurModal({ isOpen, onClose, utilisateur, onSubmi
       return
     }
 
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    if (!matricule.trim() && !isMock && !estEdition) {
+      setError('Le matricule est obligatoire pour la création d’un compte réel.')
+      return
+    }
+
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setError('Veuillez saisir une adresse e-mail valide.')
       return
     }
 
-    if (utilisateursService.emailExiste(email, utilisateur?.id)) {
+    if (!isMock && !estEdition && !passwordInitial.trim()) {
+      setError('Le mot de passe provisoire est obligatoire pour la création d’un compte réel.')
+      return
+    }
+
+    if (utilisateursService.emailExiste(email, utilisateur?.id, utilisateurs)) {
       setError('Cette adresse e-mail est déjà utilisée par un autre collaborateur.')
       return
     }
 
-    onSubmit({
-      prenom,
-      nom,
-      email,
-      telephone,
-      role,
-      filiale,
-      poste,
-      matricule,
-      dateEmbauche,
-      statut,
-      twoFactorEnabled,
-    })
+    const selection = filialesDisponibles.find(
+      (item) => String(item.id ?? item.nom) === String(filiale)
+    )
 
-    onClose()
+    setSubmitting(true)
+    try {
+      const resultat = await onSubmit({
+        prenom,
+        nom,
+        email,
+        telephone,
+        role,
+        filiale: selection?.nom || filiale,
+        filialeId: selection?.id || utilisateur?.filialeId || null,
+        poste,
+        matricule,
+        dateEmbauche,
+        statut,
+        passwordInitial: passwordInitial || undefined,
+        actif: statut === 'actif',
+      })
+      if (resultat !== false) onClose()
+    } catch {
+      setError("Impossible d'enregistrer le collaborateur.")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 50,
-      background: 'rgba(28,25,23,0.5)', backdropFilter: 'blur(4px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 16,
-    }}>
-      <div style={{
-        background: 'white', borderRadius: 20, width: '100%', maxWidth: 640,
-        boxShadow: '0 20px 40px rgba(0,0,0,0.18)',
-        maxHeight: '90vh', overflowY: 'auto',
-        border: '1px solid #e7e5e4',
-      }}>
-        {/* Header */}
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 50,
+        background: 'rgba(28,25,23,0.45)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: '100%', maxWidth: 560, maxHeight: '92vh', overflowY: 'auto',
+          background: 'white', borderRadius: 20, border: '1px solid #e7e5e4',
+          boxShadow: '0 25px 50px rgba(0,0,0,0.15)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '20px 24px', borderBottom: '1px solid #f5f5f4',
+          padding: '20px 24px 16px', borderBottom: '1px solid #f5f5f4',
         }}>
           <div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1c1917', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-              {estEdition ? <UserCog size={20} style={{ color: '#007FE1' }} /> : <UserPlus size={20} style={{ color: '#007FE1' }} />}
+            <h2 style={{ fontSize: 17, fontWeight: 800, color: '#1c1917', margin: 0 }}>
               {estEdition ? 'Modifier le collaborateur' : 'Nouveau collaborateur'}
             </h2>
-            <p style={{ fontSize: 13, color: '#78716c', margin: '4px 0 0' }}>
-              {estEdition ? 'Mettez à jour les informations et les accès.' : 'Créez un compte et attribuez un rôle.'}
+            <p style={{ fontSize: 12, color: '#78716c', margin: '3px 0 0' }}>
+              {estEdition ? 'Mettez à jour les informations et le rôle du compte.' : 'Créez un compte et assignez son rôle dans la plateforme.'}
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            style={{
-              width: 32, height: 32, borderRadius: 10, border: 'none',
-              background: '#f5f5f4', cursor: 'pointer', display: 'flex',
-              alignItems: 'center', justifyContent: 'center', color: '#78716c',
-            }}
+            style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid #e7e5e4', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#78716c' }}
+            aria-label="Fermer"
           >
             <X size={16} />
           </button>
@@ -125,149 +169,85 @@ export default function UtilisateurModal({ isOpen, onClose, utilisateur, onSubmi
 
         <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
           {error && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              background: '#FEF2F1', border: '1px solid #fecaca',
-              borderRadius: 12, padding: '10px 14px', color: '#b91c1c', fontSize: 13,
-            }}>
-              <AlertCircle size={16} style={{ flexShrink: 0 }} />
-              <span>{error}</span>
+            <div style={{ padding: '10px 14px', borderRadius: 12, background: '#FEF2F1', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 13 }}>
+              {error}
             </div>
           )}
 
-          {/* Identité */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <label htmlFor="prenom" style={labelStyle}>Prénom <span style={{ color: '#dc2626' }}>*</span></label>
-              <input id="prenom" type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)}
-                placeholder="Boris" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
-            <div>
-              <label htmlFor="nom" style={labelStyle}>Nom <span style={{ color: '#dc2626' }}>*</span></label>
-              <input id="nom" type="text" value={nom} onChange={(e) => setNom(e.target.value)}
-                placeholder="KOTCHOFA" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <Field label="Prénom" id="prenom" icon={User} required>
+              {(pl) => <input id="prenom" value={prenom} onChange={(e) => setPrenom(e.target.value)} style={inputStyle(pl)} />}
+            </Field>
+            <Field label="Nom" id="nom" icon={User} required>
+              {(pl) => <input id="nom" value={nom} onChange={(e) => setNom(e.target.value)} style={inputStyle(pl)} />}
+            </Field>
           </div>
 
-          {/* Contact */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <label htmlFor="email" style={labelStyle}>E-mail <span style={{ color: '#dc2626' }}>*</span></label>
-              <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                placeholder="prenom.nom@dayo.africa" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
-            <div>
-              <label htmlFor="telephone" style={labelStyle}>Téléphone</label>
-              <input id="telephone" type="tel" value={telephone} onChange={(e) => setTelephone(e.target.value)}
-                placeholder="+229 97 00 00 00" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <Field label="Adresse e-mail" id="email" icon={Mail}>
+              {(pl) => <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle(pl)} />}
+            </Field>
+            <Field label="Téléphone" id="telephone" icon={Phone}>
+              {(pl) => <input id="telephone" value={telephone} onChange={(e) => setTelephone(e.target.value)} style={inputStyle(pl)} />}
+            </Field>
           </div>
 
-          {/* Affectation */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <label htmlFor="role" style={labelStyle}>Rôle <span style={{ color: '#dc2626' }}>*</span></label>
-              <select id="role" value={role} onChange={(e) => setRole(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                {Object.entries(ROLES_UTILISATEUR).map(([id, r]) => (
-                  <option key={id} value={id}>{r.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="filiale" style={labelStyle}>Filiale <span style={{ color: '#dc2626' }}>*</span></label>
-              <select id="filiale" value={filiale} onChange={(e) => setFiliale(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                {FILIALES_UTILISATEUR.map((f) => (
-                  <option key={f.code} value={f.nom}>{f.nom}</option>
-                ))}
-              </select>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <Field label="Rôle" id="role" icon={Shield} required>
+              {(pl) => (
+                <select id="role" value={role} onChange={(e) => setRole(e.target.value)} style={{ ...inputStyle(pl), cursor: 'pointer' }}>
+                  {rolesDisponibles.map((r) => (
+                    <option key={r.code} value={r.code}>{r.label}</option>
+                  ))}
+                </select>
+              )}
+            </Field>
+            <Field label="Filiale" id="filiale" icon={Building2}>
+              {(pl) => (
+                <select id="filiale" value={filiale} onChange={(e) => setFiliale(e.target.value)} style={{ ...inputStyle(pl), cursor: 'pointer' }}>
+                  {filialesDisponibles.map((f) => (
+                    <option key={f.id || f.code || f.nom} value={f.id || f.nom}>{f.nom}</option>
+                  ))}
+                </select>
+              )}
+            </Field>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <label htmlFor="poste" style={labelStyle}>Poste</label>
-              <input id="poste" type="text" value={poste} onChange={(e) => setPoste(e.target.value)}
-                placeholder="Chargé de Clientèle" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
-            <div>
-              <label htmlFor="matricule" style={labelStyle}>Matricule</label>
-              <input id="matricule" type="text" value={matricule} onChange={(e) => setMatricule(e.target.value)}
-                placeholder="Généré automatiquement" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <Field label="Poste" id="poste" icon={Briefcase}>
+              {(pl) => <input id="poste" value={poste} onChange={(e) => setPoste(e.target.value)} style={inputStyle(pl)} />}
+            </Field>
+            <Field label="Matricule" id="matricule" icon={Hash} hint={estEdition ? 'Laissez vide pour conserver le matricule actuel.' : 'Requis pour un compte réel. Généré en mock si vide.'}>
+              {(pl) => <input id="matricule" value={matricule} onChange={(e) => setMatricule(e.target.value)} style={inputStyle(pl)} />}
+            </Field>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <label htmlFor="dateEmbauche" style={labelStyle}>Date d'embauche</label>
-              <input id="dateEmbauche" type="date" value={dateEmbauche} onChange={(e) => setDateEmbauche(e.target.value)}
-                style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
-            <div>
-              <label htmlFor="statut" style={labelStyle}>Statut du compte</label>
-              <select id="statut" value={statut} onChange={(e) => setStatut(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                {Object.entries(STATUTS_UTILISATEUR).map(([id, s]) => (
-                  <option key={id} value={id}>{s.label}</option>
-                ))}
-              </select>
-            </div>
+          {!estEdition && (
+            <Field label="Mot de passe provisoire" id="passwordInitial" icon={Shield} required={!isMock} hint={isMock ? 'Ignoré en mode mock.' : 'Sera exigé à changer à la première connexion.'}>
+              {(pl) => <input id="passwordInitial" type="password" value={passwordInitial} onChange={(e) => setPasswordInitial(e.target.value)} style={inputStyle(pl)} />}
+            </Field>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <Field label="Date d'embauche" id="dateEmbauche">
+              {(pl) => <input id="dateEmbauche" type="date" value={dateEmbauche} onChange={(e) => setDateEmbauche(e.target.value)} style={inputStyle(pl)} />}
+            </Field>
+            <Field label="Statut du compte" id="statut">
+              {(pl) => (
+                <select id="statut" value={statut} onChange={(e) => setStatut(e.target.value)} style={{ ...inputStyle(pl), cursor: 'pointer' }}>
+                  <option value="actif">Actif</option>
+                  <option value="inactif">Inactif</option>
+                </select>
+              )}
+            </Field>
           </div>
 
-          {/* 2FA */}
-          <button
-            type="button"
-            onClick={() => setTwoFactorEnabled((v) => !v)}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-              padding: '12px 14px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
-              border: `1.5px solid ${twoFactorEnabled ? '#007FE1' : '#e7e5e4'}`,
-              background: twoFactorEnabled ? '#F0F8FF' : '#fafaf9',
-            }}
-          >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <ShieldCheck size={18} style={{ color: twoFactorEnabled ? '#007FE1' : '#a8a29e' }} />
-              <span>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#1c1917' }}>
-                  Double authentification (2FA)
-                </span>
-                <span style={{ display: 'block', fontSize: 11, color: '#78716c' }}>
-                  Exiger un code 2FAS à la connexion
-                </span>
-              </span>
-            </span>
-            <span style={{
-              width: 40, height: 22, borderRadius: 999, flexShrink: 0, position: 'relative',
-              background: twoFactorEnabled ? '#007FE1' : '#d6d3d1', transition: 'background 0.15s',
-            }}>
-              <span style={{
-                position: 'absolute', top: 2, left: twoFactorEnabled ? 20 : 2,
-                width: 18, height: 18, borderRadius: '50%', background: 'white',
-                transition: 'left 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              }} />
-            </span>
-          </button>
-
-          {/* Actions */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                padding: '10px 18px', borderRadius: 12, border: '1px solid #e7e5e4',
-                background: 'white', color: '#57534e', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              }}
-            >
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 6, borderTop: '1px solid #f5f5f4' }}>
+            <button type="button" onClick={onClose} style={{ padding: '10px 18px', borderRadius: 12, border: '1px solid #e7e5e4', background: 'white', color: '#57534e', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               Annuler
             </button>
-            <button
-              type="submit"
-              style={{
-                padding: '10px 20px', borderRadius: 12, border: 'none',
-                background: 'linear-gradient(135deg, #007FE1, #0066C0)',
-                color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(0,127,225,0.25)',
-              }}
-            >
-              {estEdition ? 'Enregistrer les modifications' : 'Créer le collaborateur'}
+            <button type="submit" disabled={submitting} style={{ padding: '10px 20px', borderRadius: 12, border: 'none', background: submitting ? '#93c5fd' : 'linear-gradient(135deg, #007FE1, #0066C0)', color: 'white', fontSize: 13, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', boxShadow: '0 4px 14px rgba(0,127,225,0.25)' }}>
+              {submitting ? 'Enregistrement…' : (estEdition ? 'Enregistrer les modifications' : 'Créer le collaborateur')}
             </button>
           </div>
         </form>
