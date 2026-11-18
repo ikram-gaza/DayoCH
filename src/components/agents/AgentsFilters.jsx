@@ -24,28 +24,12 @@ export default function AgentsFilters({ filtres, definir, reinitialiser }) {
   )
 
   return (
-    <section
-      style={{
-        background: 'white',
-        border: '1px solid #e7e5e4',
-        borderRadius: 16,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-        padding: 16,
-      }}
-    >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
-          gap: 12,
-        }}
-      >
-        <Champ label="Recherche">
-          <div style={{ position: 'relative' }}>
-            <Search
-              size={14}
-              style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#a8a29e' }}
-            />
+    <section style={{ background: 'white', border: '1px solid #e7e5e4', borderRadius: 14, padding: '14px 18px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, alignItems: 'end' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12, fontWeight: 600, color: '#57534e' }}>
+          Recherche
+          <span style={{ position: 'relative' }}>
+            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#a8a29e' }} />
             <input
               type="search"
               value={recherche}
@@ -53,68 +37,41 @@ export default function AgentsFilters({ filtres, definir, reinitialiser }) {
               placeholder="Matricule, nom, fonction…"
               style={{ ...styleInput, paddingLeft: 32 }}
             />
-          </div>
-        </Champ>
+          </span>
+        </label>
 
         <Champ label="Département">
-          <select
-            value={filtres.departementIds || ''}
-            onChange={(evenement) => {
-              definir('departementIds', evenement.target.value || null)
-              definir('serviceIds', null)
-            }}
-            style={styleInput}
-          >
+          <select value={filtres.departementIds || ''} onChange={(e) => { definir('departementIds', e.target.value || null); definir('serviceIds', null) }} style={styleInput}>
             <option value="">Tous</option>
-            {departements.map((departement) => (
-              <option key={departement.id} value={departement.id}>{departement.nom}</option>
-            ))}
+            {departements.map((d) => <option key={d.id} value={d.id}>{d.nom}</option>)}
           </select>
         </Champ>
 
         <Champ label="Service">
-          <select
-            value={filtres.serviceIds || ''}
-            onChange={(evenement) => definir('serviceIds', evenement.target.value || null)}
-            style={styleInput}
-          >
+          <select value={filtres.serviceIds || ''} onChange={(e) => definir('serviceIds', e.target.value || null)} style={styleInput}>
             <option value="">Tous</option>
-            {services.map((service) => (
-              <option key={service.id} value={service.id}>{service.nom}</option>
-            ))}
+            {services.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
           </select>
         </Champ>
 
         <Champ label="Statut">
-          <select
-            value={filtres.actif || ''}
-            onChange={(evenement) => definir('actif', evenement.target.value || null)}
-            style={styleInput}
-          >
+          <select value={filtres.actif || ''} onChange={(e) => definir('actif', e.target.value || null)} style={styleInput}>
             <option value="">Tous</option>
             <option value="true">En poste</option>
             <option value="false">Sortis</option>
           </select>
         </Champ>
 
-        <Champ label="Compte de connexion">
-          <select
-            value={filtres.avecCompte || ''}
-            onChange={(evenement) => definir('avecCompte', evenement.target.value || null)}
-            style={styleInput}
-          >
+        <Champ label="Compte">
+          <select value={filtres.avecCompte || ''} onChange={(e) => definir('avecCompte', e.target.value || null)} style={styleInput}>
             <option value="">Indifférent</option>
             <option value="true">Avec compte</option>
             <option value="false">Sans compte</option>
           </select>
         </Champ>
 
-        <Champ label="Adresse email">
-          <select
-            value={filtres.avecEmail || ''}
-            onChange={(evenement) => definir('avecEmail', evenement.target.value || null)}
-            style={styleInput}
-          >
+        <Champ label="Email">
+          <select value={filtres.avecEmail || ''} onChange={(e) => definir('avecEmail', e.target.value || null)} style={styleInput}>
             <option value="">Indifférent</option>
             <option value="true">Avec email</option>
             <option value="false">Sans email</option>
@@ -122,11 +79,7 @@ export default function AgentsFilters({ filtres, definir, reinitialiser }) {
         </Champ>
 
         <Champ label="Gérant">
-          <select
-            value={filtres.estGerant || ''}
-            onChange={(evenement) => definir('estGerant', evenement.target.value || null)}
-            style={styleInput}
-          >
+          <select value={filtres.estGerant || ''} onChange={(e) => definir('estGerant', e.target.value || null)} style={styleInput}>
             <option value="">Indifférent</option>
             <option value="true">Gérants</option>
             <option value="false">Non gérants</option>
@@ -134,49 +87,25 @@ export default function AgentsFilters({ filtres, definir, reinitialiser }) {
         </Champ>
 
         <Champ label="Embauche du">
-          <input
-            type="date"
-            value={filtres.embaucheDu || ''}
-            onChange={(evenement) => definir('embaucheDu', evenement.target.value || null)}
-            style={styleInput}
-          />
+          <input type="date" value={filtres.embaucheDu || ''} onChange={(e) => definir('embaucheDu', e.target.value || null)} style={styleInput} />
         </Champ>
 
         <Champ label="Embauche au">
-          <input
-            type="date"
-            value={filtres.embaucheAu || ''}
-            onChange={(evenement) => definir('embaucheAu', evenement.target.value || null)}
-            style={styleInput}
-          />
+          <input type="date" value={filtres.embaucheAu || ''} onChange={(e) => definir('embaucheAu', e.target.value || null)} style={styleInput} />
         </Champ>
       </div>
 
-      <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <span style={{ fontSize: 12, color: '#78716c' }}>
-          {actifs > 0 ? `${actifs} filtre(s) actif(s)` : 'Aucun filtre actif'}
-        </span>
+      <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, color: '#78716c' }}>{actifs > 0 ? `${actifs} filtre(s) actif(s)` : 'Aucun filtre actif'}</span>
         <button
           type="button"
           disabled={actifs === 0}
-          onClick={() => {
-            setRecherche('')
-            reinitialiser()
-          }}
+          onClick={() => { setRecherche(''); reinitialiser() }}
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            height: 32,
-            padding: '0 12px',
-            borderRadius: 9,
-            border: '1px solid #e7e5e4',
-            background: 'white',
-            color: '#57534e',
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: actifs === 0 ? 'not-allowed' : 'pointer',
-            opacity: actifs === 0 ? 0.55 : 1,
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '7px 12px', borderRadius: 10, border: '1px solid #e7e5e4',
+            background: 'white', color: '#57534e', fontSize: 12, fontWeight: 600,
+            cursor: actifs === 0 ? 'not-allowed' : 'pointer', opacity: actifs === 0 ? 0.55 : 1,
           }}
         >
           <FilterX size={14} />
@@ -188,22 +117,16 @@ export default function AgentsFilters({ filtres, definir, reinitialiser }) {
 }
 
 const styleInput = {
-  width: '100%',
-  height: 36,
-  borderRadius: 9,
-  border: '1px solid #e7e5e4',
-  background: '#fafaf9',
-  color: '#1c1917',
-  fontSize: 12,
-  padding: '0 10px',
-  boxSizing: 'border-box',
-  outline: 'none',
+  width: '100%', boxSizing: 'border-box',
+  height: 36, padding: '0 10px', borderRadius: 10,
+  border: '1px solid #e7e5e4', background: 'white',
+  fontSize: 13, color: '#1c1917', outline: 'none',
 }
 
 function Champ({ label, children }) {
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 11, fontWeight: 700, color: '#57534e' }}>
-      <span>{label}</span>
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12, fontWeight: 600, color: '#57534e' }}>
+      {label}
       {children}
     </label>
   )

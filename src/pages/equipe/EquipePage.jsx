@@ -1,25 +1,16 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Users, Search, Mail, Phone, Building2, UserCheck, CalendarOff,
-  Inbox, ArrowRight, Hash,
+  Inbox, ArrowRight, Hash, AlertCircle,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
   utilisateursService,
-  ROLES_UTILISATEUR,
+  infoRole,
   STATUTS_UTILISATEUR,
+  messageErreur,
 } from '../../services/utilisateursService'
-import { congesService } from '../../services/congesService'
-import { sollicitationsService } from '../../services/sollicitationsService'
 import MembreDetailModal from '../../components/equipe/MembreDetailModal'
-
-const todayISO = () => new Date().toISOString().slice(0, 10)
-
-const concerne = (item, membre) => (
-  item.employeId === membre.id ||
-  item.employeMatricule === membre.matricule ||
-  (item.employeNom && item.employeNom.toLowerCase().includes(membre.nom?.toLowerCase() || ''))
-)
 
 function StatCard({ label, value, hint, icon: Icon, color, bg }) {
   return (
@@ -46,8 +37,8 @@ function StatCard({ label, value, hint, icon: Icon, color, bg }) {
   )
 }
 
-function MembreCard({ membre, enConge, enAttente, onOpen }) {
-  const role = ROLES_UTILISATEUR[membre.role] || ROLES_UTILISATEUR.employe
+function MembreCard({ membre, onOpen }) {
+  const role = infoRole(membre.role)
   const statut = STATUTS_UTILISATEUR[membre.statut] || STATUTS_UTILISATEUR.actif
   const avatar = `${membre.prenom?.[0] || ''}${membre.nom?.[0] || ''}`.toUpperCase()
 
@@ -61,7 +52,6 @@ function MembreCard({ membre, enConge, enAttente, onOpen }) {
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; e.currentTarget.style.transform = 'none' }}
     >
-      {/* Identité */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <span style={{
           width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
@@ -85,7 +75,7 @@ function MembreCard({ membre, enConge, enAttente, onOpen }) {
               {statut.label}
             </span>
           </div>
-          <p style={{ fontSize: 12, color: '#78716c', margin: '2px 0 0' }}>{membre.poste}</p>
+          <p style={{ fontSize: 12, color: '#78716c', margin: '2px 0 0' }}>{membre.poste || '—'}</p>
           <span style={{
             display: 'inline-block', marginTop: 6, padding: '2px 8px',
             borderRadius: 999, fontSize: 10, fontWeight: 700, color: role.color, background: role.bg,
@@ -95,42 +85,29 @@ function MembreCard({ membre, enConge, enAttente, onOpen }) {
         </div>
       </div>
 
-      {/* Coordonnées */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#57534e', minWidth: 0 }}>
           <Mail size={12} style={{ color: '#a8a29e', flexShrink: 0 }} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{membre.email}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{membre.email || '—'}</span>
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#57534e' }}>
           <Phone size={12} style={{ color: '#a8a29e' }} /> {membre.telephone || '—'}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#57534e' }}>
-          <Building2 size={12} style={{ color: '#a8a29e' }} /> {membre.filiale}
+          <Building2 size={12} style={{ color: '#a8a29e' }} /> {membre.filiale || '—'}
           <span style={{ color: '#d6d3d1' }}>·</span>
-          <Hash size={12} style={{ color: '#a8a29e' }} /> {membre.matricule}
+          <Hash size={12} style={{ color: '#a8a29e' }} /> {membre.matricule || '—'}
         </span>
       </div>
 
-      {/* Pied de carte */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         gap: 10, borderTop: '1px solid #f5f5f4', paddingTop: 12, marginTop: 'auto',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {enConge ? (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#a16207', background: '#fef9c3', padding: '3px 9px', borderRadius: 999 }}>
-              <CalendarOff size={12} /> En congé
-            </span>
-          ) : (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#15803d' }}>
-              <UserCheck size={12} /> Disponible
-            </span>
-          )}
-          {enAttente > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#007FE1', background: '#E5F2FD', padding: '3px 9px', borderRadius: 999 }}>
-              <Inbox size={12} /> {enAttente} en attente
-            </span>
-          )}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#78716c' }}>
+            <UserCheck size={12} /> Profil synchronisé
+          </span>
         </div>
         <button
           onClick={() => onOpen(membre)}
@@ -151,35 +128,38 @@ function MembreCard({ membre, enConge, enAttente, onOpen }) {
 export default function EquipePage() {
   const { user } = useAuth()
 
+  const [equipe, setEquipe] = useState([])
+  const [chargement, setChargement] = useState(true)
+  const [erreur, setErreur] = useState('')
   const [recherche, setRecherche] = useState('')
   const [filtreStatut, setFiltreStatut] = useState('all')
   const [selection, setSelection] = useState(null)
 
-  const equipe = useMemo(() => utilisateursService.getEquipe(user), [user])
-  const conges = useMemo(() => congesService.getAllDemandes(), [])
-  const sollicitations = useMemo(() => sollicitationsService.getAll(), [])
+  useEffect(() => {
+    let actif = true
+    const charger = async () => {
+      setChargement(true)
+      setErreur('')
+      try {
+        const liste = await utilisateursService.getEquipe(user)
+        if (actif) setEquipe(liste)
+      } catch (e) {
+        if (actif) setErreur(messageErreur(e))
+      } finally {
+        if (actif) setChargement(false)
+      }
+    }
+    if (user) charger()
+    else setChargement(false)
+    return () => { actif = false }
+  }, [user])
 
-  const estEnConge = (membre) => {
-    const jour = todayISO()
-    return conges.some((c) =>
-      c.statut === 'valide' &&
-      concerne(c, membre) &&
-      c.dateDebut <= jour &&
-      c.dateFin >= jour
-    )
-  }
-
-  const enAttenteMembre = (membre) => (
-    conges.filter((c) => concerne(c, membre) && c.statut === 'en_attente').length +
-    sollicitations.filter((s) => concerne(s, membre) && s.statut === 'en_attente').length
-  )
-
-  const stats = {
+  const stats = useMemo(() => ({
     effectif: equipe.length,
     actifs: equipe.filter((m) => m.statut === 'actif').length,
-    enConge: equipe.filter((m) => estEnConge(m)).length,
-    demandesEnAttente: equipe.reduce((sum, m) => sum + enAttenteMembre(m), 0),
-  }
+    enConge: 0,
+    demandesEnAttente: 0,
+  }), [equipe])
 
   const terme = recherche.trim().toLowerCase()
   const listeFiltree = equipe.filter((m) => {
@@ -193,14 +173,10 @@ export default function EquipePage() {
     return matchRecherche && matchStatut
   })
 
-  const congesMembre = selection ? conges.filter((c) => concerne(c, selection)) : []
-  const sollicitationsMembre = selection ? sollicitations.filter((s) => concerne(s, selection)) : []
-
   const estAdmin = user?.role === 'super_admin'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Header */}
       <div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1c1917', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
           <Users size={24} style={{ color: '#007FE1' }} />
@@ -208,20 +184,25 @@ export default function EquipePage() {
         </h1>
         <p style={{ fontSize: 13, color: '#78716c', margin: '4px 0 0' }}>
           {estAdmin
-            ? 'Vue d\'ensemble de tous les collaborateurs du Groupe Dayo.'
+            ? 'Vue d\'ensemble des collaborateurs du Groupe Dayo.'
             : 'Suivez les collaborateurs rattachés à votre périmètre.'}
         </p>
       </div>
 
-      {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
         <StatCard label="Effectif" value={stats.effectif} hint="collaborateurs" icon={Users} color="#007FE1" bg="#E5F2FD" />
         <StatCard label="Actifs" value={stats.actifs} hint="en poste" icon={UserCheck} color="#15803d" bg="#dcfce7" />
-        <StatCard label="En congé" value={stats.enConge} hint="aujourd'hui" icon={CalendarOff} color="#a16207" bg="#fef9c3" />
-        <StatCard label="Demandes en attente" value={stats.demandesEnAttente} hint="congés & sollicitations" icon={Inbox} color="#7c3aed" bg="#f3e8ff" />
+        <StatCard label="En congé" value={stats.enConge} hint="donnée indisponible" icon={CalendarOff} color="#a16207" bg="#fef9c3" />
+        <StatCard label="Demandes en attente" value={stats.demandesEnAttente} hint="donnée indisponible" icon={Inbox} color="#7c3aed" bg="#f3e8ff" />
       </div>
 
-      {/* Filtres */}
+      {erreur && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#FEF2F1', border: '1px solid #fecaca', borderRadius: 12, padding: '10px 14px', color: '#b91c1c', fontSize: 13 }}>
+          <AlertCircle size={16} style={{ flexShrink: 0 }} />
+          <span>{erreur}</span>
+        </div>
+      )}
+
       <div style={{
         background: 'white', borderRadius: 14, padding: '14px 18px',
         border: '1px solid #e7e5e4', display: 'flex', alignItems: 'center',
@@ -260,8 +241,11 @@ export default function EquipePage() {
         </select>
       </div>
 
-      {/* Liste */}
-      {listeFiltree.length === 0 ? (
+      {chargement ? (
+        <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e7e5e4', padding: '48px 24px', textAlign: 'center', color: '#78716c', fontSize: 13 }}>
+          Chargement de l’équipe…
+        </div>
+      ) : listeFiltree.length === 0 ? (
         <div style={{
           background: 'white', borderRadius: 16, border: '1px dashed #d6d3d1',
           padding: '48px 24px', textAlign: 'center',
@@ -273,12 +257,8 @@ export default function EquipePage() {
           }}>
             <Users size={24} />
           </span>
-          <p style={{ fontSize: 15, fontWeight: 700, color: '#1c1917', margin: 0 }}>
-            Aucun collaborateur
-          </p>
-          <p style={{ fontSize: 13, color: '#78716c', margin: '4px 0 0' }}>
-            Aucun membre de votre équipe ne correspond à ces critères.
-          </p>
+          <p style={{ fontSize: 15, fontWeight: 700, color: '#1c1917', margin: 0 }}>Aucun collaborateur</p>
+          <p style={{ fontSize: 13, color: '#78716c', margin: '4px 0 0' }}>Aucun membre ne correspond à ces critères.</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
@@ -286,8 +266,6 @@ export default function EquipePage() {
             <MembreCard
               key={membre.id}
               membre={membre}
-              enConge={estEnConge(membre)}
-              enAttente={enAttenteMembre(membre)}
               onOpen={setSelection}
             />
           ))}
@@ -297,8 +275,8 @@ export default function EquipePage() {
       <MembreDetailModal
         isOpen={Boolean(selection)}
         membre={selection}
-        conges={congesMembre}
-        sollicitations={sollicitationsMembre}
+        conges={[]}
+        sollicitations={[]}
         onClose={() => setSelection(null)}
       />
     </div>

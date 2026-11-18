@@ -14,22 +14,28 @@ export const apiAuth = {
     return data
   },
 
-  profil: async () => normaliserUtilisateur(await lire('/auth/profil')),
+  profil: async () => {
+    const data = await lire('/auth/profil')
+    return normaliserUtilisateur(data?.utilisateur || data?.user || data, data)
+  },
 
   deconnexion: (refreshToken) => api.post('/auth/logout', { refreshToken }),
 
-  preparer2FA: async (userId) => {
-    const { data } = await api.post('/auth/2fa/setup', { userId })
+  changerMotDePasse: (ancienPassword, nouveauPassword) =>
+    api.post('/auth/mot-de-passe/changer', { ancienPassword, nouveauPassword }),
+
+  preparer2FA: async () => {
+    const { data } = await api.post('/auth/2fa/preparer')
     return data
   },
 
-  activer2FA: async (userId, secret, code) => {
-    const { data } = await api.post('/auth/2fa/enable', { userId, secret, code })
+  activer2FA: async (codeTotp) => {
+    const { data } = await api.post('/auth/2fa/activer', { codeTotp })
     return data
   },
 
-  desactiver2FA: async (userId) => {
-    const { data } = await api.post('/auth/2fa/disable', { userId })
+  desactiver2FA: async (password, codeTotp) => {
+    const { data } = await api.post('/auth/2fa/desactiver', { password, codeTotp })
     return data
   },
 }

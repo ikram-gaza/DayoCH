@@ -366,13 +366,7 @@ export default function LoginPage() {
                     background: '#fafaf9', border: '1px dashed #e7e5e4',
                     fontSize: 11, color: '#78716c', lineHeight: 1.6,
                   }}>
-                    <strong style={{ color: '#57534e' }}>Mode démonstration</strong> — identifiants :{' '}
-                    <code style={{ color: '#007FE1' }}>manager</code>,{' '}
-                    <code style={{ color: '#007FE1' }}>employe</code>,{' '}
-                    <code style={{ color: '#007FE1' }}>stock</code>,{' '}
-                    <code style={{ color: '#007FE1' }}>super_admin</code> (mot de passe libre). Les rôles{' '}
-                    <code style={{ color: '#007FE1' }}>super_admin</code> et{' '}
-                    <code style={{ color: '#007FE1' }}>manager</code> doivent configurer la 2FA avec 2FAS dès la connexion.
+                    Mode démonstration activé.
                   </div>
                 )}
               </div>

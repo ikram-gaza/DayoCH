@@ -1,12 +1,16 @@
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   User, Mail, Phone, Building2, Briefcase, Hash,
   Camera, Save, Lock, Eye, EyeOff, CheckCircle2,
-  Shield, Bell, Smartphone,
+  Shield, Bell, Smartphone, AlertCircle,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { authService } from '../../services/authService'
 import TwoFactorSetupModal from '../../components/profil/TwoFactorSetupModal'
+
+const REGLE_MOT_DE_PASSE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{10,}$/
+const messageErreur = (echec) => echec?.response?.data?.message || echec?.message || 'Une erreur est survenue.'
 
 const ROLE_LABELS = {
   super_admin: 'Super Administrateur',
@@ -136,7 +140,9 @@ function Toast({ message, onClose }) {
 
 // ── Page principale ───────────────────────────────────────────
 export default function ProfilPage() {
-  const { user, updateUser } = useAuth()
+  const { user, updateUser, changerMotDePasse, logout } = useAuth()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const fileInputRef = useRef(null)
 
   const [photo, setPhoto] = useState(user?.photo || null)
@@ -152,11 +158,19 @@ export default function ProfilPage() {
   const [saving, setSaving] = useState(false)
   const [savingPwd, setSavingPwd] = useState(false)
   const [pwdError, setPwdError] = useState('')
-  const [show2FASetup, setShow2FASetup] = useState(false)
+  const [preparation2FA, setPreparation2FA] = useState(null)
+  const [preparant2FA, setPreparant2FA] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    setForm({ prenom: user.prenom || '', nom: user.nom || '', email: user.email || '', telephone: user.telephone || '' })
+    setPhoto(user.photo || null)
+  }, [user])
 
   const initials = `${user?.prenom?.[0] || ''}${user?.nom?.[0] || ''}`.toUpperCase()
   const roleStyle = ROLE_COLORS[user?.role] || ROLE_COLORS.employe
   const is2FAMandatory = ['super_admin', 'manager'].includes(user?.role)
+  const mustChangePassword = Boolean(user?.doitChangerMotDePasse) || searchParams.get('changer-mot-de-passe') === '1'
 
   const showToast = (msg) => {
     setToast(msg)
@@ -180,23 +194,42 @@ export default function ProfilPage() {
   // Sauvegarde infos
   const handleSaveInfo = async () => {
     setSaving(true)
-    await new Promise(r => setTimeout(r, 700)) // simulation API
-    updateUser({ ...form, photo })
-    setSaving(false)
-    showToast('Profil mis à jour avec succès')
+    try {
+      updateUser({ ...form, photo })
+      showToast(authService.isMock ? 'Profil mis à jour localement (mode mock).' : 'Profil mis à jour.')
+    } catch (echec) {
+      showToast(messageErreur(echec))
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Changement de mot de passe
   const handleSavePassword = async () => {
     setPwdError('')
     if (!passwords.ancien) return setPwdError('Saisissez votre mot de passe actuel.')
-    if (passwords.nouveau.length < 8) return setPwdError('Le nouveau mot de passe doit faire au moins 8 caractères.')
+    if (!authService.isMock && !REGLE_MOT_DE_PASSE.test(passwords.nouveau)) {
+      return setPwdError('10 caractères minimum, avec une majuscule, une minuscule, un chiffre et un caractère spécial.')
+    }
+    if (authService.isMock && passwords.nouveau.length < 8) {
+      return setPwdError('Le nouveau mot de passe doit faire au moins 8 caractères.')
+    }
     if (passwords.nouveau !== passwords.confirmation) return setPwdError('Les mots de passe ne correspondent pas.')
     setSavingPwd(true)
-    await new Promise(r => setTimeout(r, 700))
-    setSavingPwd(false)
-    setPasswords({ ancien: '', nouveau: '', confirmation: '' })
-    showToast('Mot de passe modifié avec succès')
+    try {
+      await changerMotDePasse({ ancien: passwords.ancien, nouveau: passwords.nouveau })
+      setPasswords({ ancien: '', nouveau: '', confirmation: '' })
+      if (!authService.isMock) {
+        await logout()
+        navigate('/login', { replace: true })
+        return
+      }
+      showToast('Mot de passe modifié localement (mode mock).')
+    } catch (echec) {
+      setPwdError(messageErreur(echec))
+    } finally {
+      setSavingPwd(false)
+    }
   }
 
   // Activation / désactivation de la double authentification
@@ -206,22 +239,38 @@ export default function ProfilPage() {
       return
     }
     if (!user?.twoFactorEnabled) {
-      setShow2FASetup(true)
+      try {
+        setPreparant2FA(true)
+        const preparation = await authService.prepare2FA(user)
+        setPreparation2FA(preparation)
+      } catch (echec) {
+        showToast(messageErreur(echec))
+      } finally {
+        setPreparant2FA(false)
+      }
       return
     }
     if (!window.confirm('Désactiver la double authentification ?')) return
     try {
-      await authService.disable2FA(user)
+      let credentials = {}
+      if (!authService.isMock) {
+        const password = window.prompt('Mot de passe actuel :')
+        if (!password) return
+        const codeTotp = window.prompt('Code 2FA à 6 chiffres :')
+        if (!codeTotp) return
+        credentials = { password, codeTotp }
+      }
+      await authService.disable2FA(user, credentials)
       updateUser({ twoFactorEnabled: false })
       showToast('Double authentification désactivée.')
-    } catch {
-      showToast('Impossible de désactiver la double authentification.')
+    } catch (echec) {
+      showToast(messageErreur(echec))
     }
   }
 
   const handle2FAEnabled = () => {
     updateUser({ twoFactorEnabled: true })
-    setShow2FASetup(false)
+    setPreparation2FA(null)
     showToast('Double authentification activée.')
   }
 
@@ -238,6 +287,22 @@ export default function ProfilPage() {
           Gérez vos informations personnelles et vos préférences
         </p>
       </div>
+
+      {mustChangePassword && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          background: '#FFFBEB', border: '1px solid #fcd34d',
+          borderRadius: 12, padding: '12px 14px', color: '#92400e', fontSize: 13,
+        }}>
+          <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <p style={{ margin: 0, fontWeight: 700 }}>Changement de mot de passe requis</p>
+            <p style={{ margin: '2px 0 0' }}>
+              Votre compte doit changer de mot de passe avant de continuer à utiliser les autres écrans.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Layout 2 colonnes ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 20, alignItems: 'start' }}>
@@ -302,7 +367,7 @@ export default function ProfilPage() {
                 fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
                 background: roleStyle.bg, color: roleStyle.color,
               }}>
-                {ROLE_LABELS[user?.role] || user?.role}
+                {user?.roleLabel || ROLE_LABELS[user?.role] || user?.role}
               </span>
             </div>
 
@@ -381,7 +446,7 @@ export default function ProfilPage() {
                 <button
                   type="button"
                   onClick={handleToggle2FA}
-                  disabled={is2FAMandatory && user?.twoFactorEnabled}
+                  disabled={preparant2FA || (is2FAMandatory && user?.twoFactorEnabled)}
                   aria-pressed={Boolean(user?.twoFactorEnabled)}
                   aria-label={
                     is2FAMandatory && user?.twoFactorEnabled
@@ -390,10 +455,11 @@ export default function ProfilPage() {
                   }
                   style={{
                     width: 40, height: 22, borderRadius: 999, border: 'none', padding: 0,
-                    cursor: is2FAMandatory && user?.twoFactorEnabled ? 'not-allowed' : 'pointer',
+                    cursor: (preparant2FA || (is2FAMandatory && user?.twoFactorEnabled)) ? 'not-allowed' : 'pointer',
                     position: 'relative', flexShrink: 0,
                     background: user?.twoFactorEnabled ? '#007FE1' : '#d6d3d1',
                     transition: 'background 0.15s',
+                    opacity: preparant2FA ? 0.7 : 1,
                   }}
                 >
                   <span style={{
@@ -584,10 +650,11 @@ export default function ProfilPage() {
       {/* Toast */}
       {toast && <Toast message={toast} />}
 
-      {show2FASetup && (
+      {preparation2FA && (
         <TwoFactorSetupModal
+          preparation={preparation2FA}
           user={user}
-          onClose={() => setShow2FASetup(false)}
+          onClose={() => setPreparation2FA(null)}
           onEnabled={handle2FAEnabled}
         />
       )}

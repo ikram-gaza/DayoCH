@@ -52,7 +52,11 @@ api.interceptors.request.use((config) => {
   if (acces) config.headers.Authorization = `Bearer ${acces}`
 
   const filiale = jetons.filiale()
-  if (filiale) config.headers['X-Filiale-Id'] = filiale
+  // Les anciens identifiants statiques (ex: "dayo-benin") ne sont pas reconnus par l'API
+  // et provoquent des erreurs 500 ; on n'envoie que des identifiants réels.
+  const filialeValide =
+    typeof filiale === 'string' && filiale && !/^dayo-/i.test(filiale)
+  if (filialeValide) config.headers['X-Filiale-Id'] = filiale
 
   return config
 })

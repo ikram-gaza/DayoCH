@@ -1,14 +1,14 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   Users, UserPlus, Search, Pencil, KeyRound, ShieldCheck, ShieldOff,
-  UserCheck, UserX, Trash2, CheckCircle2, Mail, Phone,
+  UserCheck, UserX, Trash2, CheckCircle2, AlertCircle, Mail, Phone,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
   utilisateursService,
-  ROLES_UTILISATEUR,
+  infoRole,
+  messageErreur,
   STATUTS_UTILISATEUR,
-  FILIALES_UTILISATEUR,
 } from '../../services/utilisateursService'
 import UtilisateurModal from '../../components/utilisateurs/UtilisateurModal'
 
@@ -79,7 +79,11 @@ function IconAction({ title, onClick, color, hoverBg, disabled, children }) {
 export default function UtilisateursPage() {
   const { user } = useAuth()
 
-  const [utilisateurs, setUtilisateurs] = useState(() => utilisateursService.getAll())
+  const [utilisateurs, setUtilisateurs] = useState([])
+  const [rolesDisponibles, setRolesDisponibles] = useState(() => utilisateursService.getRolesDisponibles())
+  const [filiales, setFiliales] = useState(() => utilisateursService.getFilialesDisponibles())
+  const [chargement, setChargement] = useState(true)
+  const [erreurChargement, setErreurChargement] = useState('')
   const [recherche, setRecherche] = useState('')
   const [filtreRole, setFiltreRole] = useState('all')
   const [filtreFiliale, setFiltreFiliale] = useState('all')
@@ -89,7 +93,35 @@ export default function UtilisateursPage() {
   const [edition, setEdition] = useState(null)
   const [toastMessage, setToastMessage] = useState(null)
 
-  const recharger = () => setUtilisateurs([...utilisateursService.getAll()])
+  const recharger = async () => {
+    const liste = await utilisateursService.lister()
+    setUtilisateurs([...liste])
+  }
+
+  useEffect(() => {
+    let actif = true
+    const charger = async () => {
+      setChargement(true)
+      setErreurChargement('')
+      try {
+        const [liste, roles, filialesChargees] = await Promise.all([
+          utilisateursService.lister(),
+          utilisateursService.listerRoles(),
+          utilisateursService.listerFiliales(),
+        ])
+        if (!actif) return
+        setUtilisateurs([...liste])
+        setRolesDisponibles(roles)
+        setFiliales(filialesChargees)
+      } catch (echec) {
+        if (actif) setErreurChargement(messageErreur(echec))
+      } finally {
+        if (actif) setChargement(false)
+      }
+    }
+    charger()
+    return () => { actif = false }
+  }, [])
 
   const afficherToast = (msg) => {
     setToastMessage(msg)
@@ -108,7 +140,7 @@ export default function UtilisateursPage() {
         u.matricule?.toLowerCase().includes(terme) ||
         u.poste?.toLowerCase().includes(terme)
       const matchRole = filtreRole === 'all' || u.role === filtreRole
-      const matchFiliale = filtreFiliale === 'all' || u.filiale === filtreFiliale
+      const matchFiliale = filtreFiliale === 'all' || u.filiale === filtreFiliale || String(u.filialeId) === String(filtreFiliale)
       const matchStatut = filtreStatut === 'all' || u.statut === filtreStatut
       return matchRecherche && matchRole && matchFiliale && matchStatut
     })
@@ -117,51 +149,76 @@ export default function UtilisateursPage() {
   const ouvrirCreation = () => { setEdition(null); setShowModal(true) }
   const ouvrirEdition = (u) => { setEdition(u); setShowModal(true) }
 
-  const handleSubmit = (data) => {
-    if (edition) {
-      utilisateursService.modifierUtilisateur(edition.id, data)
-      afficherToast('Collaborateur mis à jour avec succès.')
-    } else {
-      utilisateursService.creerUtilisateur(data)
-      afficherToast('Collaborateur créé avec succès.')
+  const handleSubmit = async (data) => {
+    try {
+      if (edition) {
+        await utilisateursService.modifier(edition.id, data)
+        afficherToast('Collaborateur mis à jour avec succès.')
+      } else {
+        await utilisateursService.creer(data)
+        afficherToast('Collaborateur créé avec succès.')
+      }
+      await recharger()
+      return true
+    } catch (echec) {
+      afficherToast(`Erreur : ${messageErreur(echec)}`)
+      return false
     }
-    recharger()
   }
 
-  const handleBasculerStatut = (u) => {
+  const handleBasculerStatut = async (u) => {
     const activer = u.statut !== 'actif'
     if (!activer && !window.confirm(`Désactiver le compte de ${u.prenom} ${u.nom} ? Il ne pourra plus se connecter.`)) return
-    utilisateursService.changerStatut(u.id, activer ? 'actif' : 'inactif')
-    recharger()
-    afficherToast(activer ? 'Compte réactivé.' : 'Compte désactivé.')
+    try {
+      await utilisateursService.changerStatut(u.id, activer ? 'actif' : 'inactif')
+      await recharger()
+      afficherToast(activer ? 'Compte réactivé.' : 'Compte désactivé.')
+    } catch (echec) {
+      afficherToast(`Erreur : ${messageErreur(echec)}`)
+    }
   }
 
-  const handleBasculer2FA = (u) => {
-    utilisateursService.basculer2FA(u.id)
-    recharger()
-    afficherToast(u.twoFactorEnabled ? 'Double authentification désactivée.' : 'Double authentification activée.')
+  const handleBasculer2FA = async (u) => {
+    try {
+      await utilisateursService.basculer2FA(u.id, !u.twoFactorEnabled)
+      await recharger()
+      afficherToast(u.twoFactorEnabled ? 'Double authentification désactivée.' : 'Double authentification activée.')
+    } catch (echec) {
+      afficherToast(`Erreur : ${messageErreur(echec)}`)
+    }
   }
 
-  const handleReinitialiser = (u) => {
+  const handleReinitialiser = async (u) => {
     if (!window.confirm(`Réinitialiser le mot de passe de ${u.prenom} ${u.nom} ?`)) return
-    const motDePasse = utilisateursService.reinitialiserMotDePasse()
-    window.alert(
-      `Mot de passe temporaire pour ${u.prenom} ${u.nom} :\n\n${motDePasse}\n\n` +
-      'Communiquez-le au collaborateur, il devra le changer à la première connexion.'
-    )
-    afficherToast('Mot de passe réinitialisé.')
+    try {
+      const motDePasse = await utilisateursService.reinitialiserMotDePasse(u.id)
+      if (motDePasse) {
+        window.alert(
+          `Mot de passe temporaire pour ${u.prenom} ${u.nom} :\n\n${motDePasse}\n\n` +
+          'Communiquez-le au collaborateur, il devra le changer à la première connexion.'
+        )
+      } else {
+        window.alert(`La demande de réinitialisation de ${u.prenom} ${u.nom} a été enregistrée.`)
+      }
+      afficherToast('Réinitialisation du mot de passe traitée.')
+    } catch (echec) {
+      afficherToast(`Erreur : ${messageErreur(echec)}`)
+    }
   }
 
-  const handleSupprimer = (u) => {
+  const handleSupprimer = async (u) => {
     if (!window.confirm(`Supprimer définitivement le compte de ${u.prenom} ${u.nom} ?`)) return
-    utilisateursService.supprimerUtilisateur(u.id)
-    recharger()
-    afficherToast('Collaborateur supprimé.')
+    try {
+      await utilisateursService.supprimer(u.id)
+      await recharger()
+      afficherToast('Collaborateur supprimé.')
+    } catch (echec) {
+      afficherToast(`Erreur : ${messageErreur(echec)}`)
+    }
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Toast */}
       {toastMessage && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 100,
@@ -175,7 +232,6 @@ export default function UtilisateursPage() {
         </div>
       )}
 
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1c1917', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -201,7 +257,6 @@ export default function UtilisateursPage() {
         </button>
       </div>
 
-      {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
         <StatCard label="Collaborateurs" value={stats.total} hint="comptes" icon={Users} color="#007FE1" bg="#E5F2FD" />
         <StatCard label="Actifs" value={stats.actifs} hint="en poste" icon={UserCheck} color="#15803d" bg="#dcfce7" />
@@ -209,7 +264,6 @@ export default function UtilisateursPage() {
         <StatCard label="2FA activée" value={stats.deuxFA} hint="comptes sécurisés" icon={ShieldCheck} color="#7c3aed" bg="#f3e8ff" />
       </div>
 
-      {/* Filtres */}
       <div style={{
         background: 'white', borderRadius: 14, padding: '14px 18px',
         border: '1px solid #e7e5e4', display: 'flex', alignItems: 'center',
@@ -243,8 +297,8 @@ export default function UtilisateursPage() {
             }}
           >
             <option value="all">Tous les rôles</option>
-            {Object.entries(ROLES_UTILISATEUR).map(([id, r]) => (
-              <option key={id} value={id}>{r.label}</option>
+            {rolesDisponibles.map((r) => (
+              <option key={r.code} value={r.code}>{r.label}</option>
             ))}
           </select>
 
@@ -258,8 +312,8 @@ export default function UtilisateursPage() {
             }}
           >
             <option value="all">Toutes les filiales</option>
-            {FILIALES_UTILISATEUR.map((f) => (
-              <option key={f.code} value={f.nom}>{f.nom}</option>
+            {filiales.map((f) => (
+              <option key={f.id || f.code || f.nom} value={f.nom}>{f.nom}</option>
             ))}
           </select>
 
@@ -280,7 +334,28 @@ export default function UtilisateursPage() {
         </div>
       </div>
 
-      {/* Tableau */}
+      {erreurChargement && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: '#FEF2F1', border: '1px solid #fecaca',
+          borderRadius: 12, padding: '10px 14px', color: '#b91c1c', fontSize: 13,
+        }}>
+          <AlertCircle size={16} style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1 }}>{erreurChargement}</span>
+          <button
+            type="button"
+            onClick={recharger}
+            style={{
+              border: '1px solid #fecaca', background: 'white', color: '#b91c1c',
+              padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Réessayer
+          </button>
+        </div>
+      )}
+
       <div style={{
         background: 'white', borderRadius: 16, border: '1px solid #e7e5e4',
         boxShadow: '0 1px 3px rgba(0,0,0,0.04)', overflow: 'hidden',
@@ -302,11 +377,25 @@ export default function UtilisateursPage() {
               </tr>
             </thead>
             <tbody>
-              {listeFiltree.map((u) => {
-                const role = ROLES_UTILISATEUR[u.role] || ROLES_UTILISATEUR.employe
+              {chargement && (
+                <tr>
+                  <td colSpan={7} style={{ padding: '28px 16px', textAlign: 'center', color: '#78716c', fontSize: 13 }}>
+                    Chargement des collaborateurs…
+                  </td>
+                </tr>
+              )}
+              {!chargement && listeFiltree.length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ padding: '28px 16px', textAlign: 'center', color: '#78716c', fontSize: 13 }}>
+                    Aucun collaborateur ne correspond aux critères.
+                  </td>
+                </tr>
+              )}
+              {!chargement && listeFiltree.map((u) => {
+                const role = infoRole(u.role)
                 const statut = STATUTS_UTILISATEUR[u.statut] || STATUTS_UTILISATEUR.actif
                 const avatar = avatarColor(`${u.prenom} ${u.nom}`)
-                const estMoi = u.id === user?.id
+                const estMoi = String(u.id) === String(user?.id)
 
                 return (
                   <tr
@@ -315,7 +404,6 @@ export default function UtilisateursPage() {
                     onMouseEnter={(e) => { e.currentTarget.style.background = '#F0F8FF' }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
                   >
-                    {/* Collaborateur */}
                     <td style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <span style={{
@@ -336,16 +424,14 @@ export default function UtilisateursPage() {
                             )}
                           </p>
                           <p style={{ fontSize: 11, color: '#78716c', margin: '1px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <Mail size={10} /> {u.email}
+                            <Mail size={10} /> {u.email || '—'}
                           </p>
                           <p style={{ fontSize: 11, color: '#a8a29e', margin: '1px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <Phone size={10} /> {u.poste}{u.telephone ? ` · ${u.telephone}` : ''}
+                            <Phone size={10} /> {u.poste || '—'}{u.telephone ? ` · ${u.telephone}` : ''}
                           </p>
                         </div>
                       </div>
                     </td>
-
-                    {/* Rôle */}
                     <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -355,18 +441,8 @@ export default function UtilisateursPage() {
                         {role.label}
                       </span>
                     </td>
-
-                    {/* Filiale */}
-                    <td style={{ padding: '12px 16px', fontSize: 12, color: '#57534e', whiteSpace: 'nowrap' }}>
-                      {u.filiale}
-                    </td>
-
-                    {/* Matricule */}
-                    <td style={{ padding: '12px 16px', fontSize: 12, color: '#57534e', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      {u.matricule}
-                    </td>
-
-                    {/* Statut */}
+                    <td style={{ padding: '12px 16px', fontSize: 12, color: '#57534e', whiteSpace: 'nowrap' }}>{u.filiale || '—'}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12, color: '#57534e', fontWeight: 600, whiteSpace: 'nowrap' }}>{u.matricule || '—'}</td>
                     <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -377,8 +453,6 @@ export default function UtilisateursPage() {
                         {statut.label}
                       </span>
                     </td>
-
-                    {/* 2FA */}
                     <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                       {u.twoFactorEnabled ? (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#15803d' }}>
@@ -390,42 +464,13 @@ export default function UtilisateursPage() {
                         </span>
                       )}
                     </td>
-
-                    {/* Actions */}
                     <td style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2 }}>
-                        <IconAction title="Modifier" onClick={() => ouvrirEdition(u)} color="#007FE1" hoverBg="#E5F2FD">
-                          <Pencil size={15} />
-                        </IconAction>
-                        <IconAction title="Réinitialiser le mot de passe" onClick={() => handleReinitialiser(u)} color="#a16207" hoverBg="#fef9c3">
-                          <KeyRound size={15} />
-                        </IconAction>
-                        <IconAction
-                          title={u.twoFactorEnabled ? 'Désactiver la 2FA' : 'Activer la 2FA'}
-                          onClick={() => handleBasculer2FA(u)}
-                          color="#7c3aed"
-                          hoverBg="#f3e8ff"
-                        >
-                          {u.twoFactorEnabled ? <ShieldOff size={15} /> : <ShieldCheck size={15} />}
-                        </IconAction>
-                        <IconAction
-                          title={u.statut === 'actif' ? 'Désactiver le compte' : 'Activer le compte'}
-                          onClick={() => handleBasculerStatut(u)}
-                          color={u.statut === 'actif' ? '#57534e' : '#15803d'}
-                          hoverBg={u.statut === 'actif' ? '#f5f5f4' : '#dcfce7'}
-                          disabled={estMoi}
-                        >
-                          {u.statut === 'actif' ? <UserX size={15} /> : <UserCheck size={15} />}
-                        </IconAction>
-                        <IconAction
-                          title="Supprimer"
-                          onClick={() => handleSupprimer(u)}
-                          color="#dc2626"
-                          hoverBg="#FEF2F1"
-                          disabled={estMoi}
-                        >
-                          <Trash2 size={15} />
-                        </IconAction>
+                        <IconAction title="Modifier" onClick={() => ouvrirEdition(u)} color="#007FE1" hoverBg="#E5F2FD"><Pencil size={15} /></IconAction>
+                        <IconAction title="Réinitialiser le mot de passe" onClick={() => handleReinitialiser(u)} color="#a16207" hoverBg="#fef9c3"><KeyRound size={15} /></IconAction>
+                        <IconAction title={u.twoFactorEnabled ? 'Désactiver la 2FA' : 'Activer la 2FA'} onClick={() => handleBasculer2FA(u)} color="#7c3aed" hoverBg="#f3e8ff">{u.twoFactorEnabled ? <ShieldOff size={15} /> : <ShieldCheck size={15} />}</IconAction>
+                        <IconAction title={u.statut === 'actif' ? 'Désactiver le compte' : 'Réactiver le compte'} onClick={() => handleBasculerStatut(u)} color={u.statut === 'actif' ? '#b91c1c' : '#15803d'} hoverBg={u.statut === 'actif' ? '#FEF2F1' : '#dcfce7'}>{u.statut === 'actif' ? <UserX size={15} /> : <UserCheck size={15} />}</IconAction>
+                        <IconAction title="Supprimer" onClick={() => handleSupprimer(u)} color="#b91c1c" hoverBg="#FEF2F1" disabled={estMoi}><Trash2 size={15} /></IconAction>
                       </div>
                     </td>
                   </tr>
@@ -434,27 +479,8 @@ export default function UtilisateursPage() {
             </tbody>
           </table>
         </div>
-
-        {listeFiltree.length === 0 && (
-          <div style={{ padding: '48px 24px', textAlign: 'center' }}>
-            <span style={{
-              width: 56, height: 56, borderRadius: 16, background: '#f5f5f4',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              color: '#a8a29e', marginBottom: 14,
-            }}>
-              <Users size={24} />
-            </span>
-            <p style={{ fontSize: 15, fontWeight: 700, color: '#1c1917', margin: 0 }}>
-              Aucun collaborateur
-            </p>
-            <p style={{ fontSize: 13, color: '#78716c', margin: '4px 0 0' }}>
-              Aucun compte ne correspond à ces critères de recherche.
-            </p>
-          </div>
-        )}
       </div>
 
-      {/* Modale */}
       {showModal && (
         <UtilisateurModal
           key={edition?.id || 'nouveau'}
@@ -462,6 +488,10 @@ export default function UtilisateursPage() {
           onClose={() => setShowModal(false)}
           utilisateur={edition}
           onSubmit={handleSubmit}
+          utilisateurs={utilisateurs}
+          roles={rolesDisponibles}
+          filiales={filiales}
+          isMock={false}
         />
       )}
     </div>

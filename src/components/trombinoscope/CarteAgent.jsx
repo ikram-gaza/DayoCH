@@ -6,57 +6,60 @@ import { Badge } from '../ui/ui'
 export default function CarteAgent({ agent, lien = true }) {
   const contenu = (
     <>
-      <PhotoAgent
-        agentId={agent.id}
-        prenom={agent.prenom}
-        nom={agent.nom}
-        aPhoto={agent.aPhoto}
-        photoUrl={agent.photoUrl}
-        taille={80}
-      />
-      <div>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#1c1917' }}>{agent.nomComplet || `${agent.prenom} ${agent.nom}`}</p>
-        <p style={{ margin: '2px 0 0', fontSize: 11, color: '#78716c' }}>{agent.fonction || 'Fonction non précisée'}</p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <PhotoAgent
+          agentId={agent.id}
+          prenom={agent.prenom}
+          nom={agent.nom}
+          aPhoto={agent.aPhoto}
+          photoUrl={agent.photoUrl}
+          taille={44}
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 14, fontWeight: 700, color: '#1c1917', margin: 0 }}>
+            {agent.nomComplet || `${agent.prenom} ${agent.nom}`}
+          </p>
+          <p style={{ fontSize: 12, color: '#78716c', margin: '2px 0 0' }}>{agent.fonction || 'Fonction non précisée'}</p>
+          {agent.estGerant && (
+            <span style={{ display: 'inline-block', marginTop: 6 }}>
+              <Badge tone="red">Gérant</Badge>
+            </span>
+          )}
+        </div>
       </div>
-      <p style={{ margin: 0, fontSize: 11, color: '#a8a29e', textAlign: 'center' }}>
+
+      <p style={{ fontSize: 12, color: '#57534e', margin: 0 }}>
         {[agent.departement, agent.service].filter(Boolean).join(' · ') || 'Rattachement direct'}
       </p>
-      {agent.estGerant && <Badge tone="red">Gérant</Badge>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center', fontSize: 11, color: '#78716c' }}>
-        {agent.email && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: 190 }}>
-            <Mail size={11} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agent.email}</span>
-          </span>
-        )}
-        {agent.telephone && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <Phone size={11} /> {agent.telephone}
-          </span>
-        )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, borderTop: '1px solid #f5f5f4', paddingTop: 10, marginTop: 'auto' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#57534e', minWidth: 0 }}>
+          <Mail size={12} style={{ color: '#a8a29e', flexShrink: 0 }} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agent.email || '—'}</span>
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#57534e' }}>
+          <Phone size={12} style={{ color: '#a8a29e', flexShrink: 0 }} /> {agent.telephone || '—'}
+        </span>
       </div>
     </>
   )
 
   const style = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 8,
-    padding: 16,
-    textAlign: 'center',
-    background: 'white',
-    border: '1px solid #e7e5e4',
-    borderRadius: 16,
-    textDecoration: 'none',
-    color: 'inherit',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+    background: 'white', borderRadius: 16, border: '1px solid #e7e5e4',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.04)', padding: '16px 18px',
+    display: 'flex', flexDirection: 'column', gap: 10,
+    textDecoration: 'none', color: 'inherit', transition: 'box-shadow 0.15s, transform 0.15s',
   }
 
   if (!lien) return <div style={style}>{contenu}</div>
 
   return (
-    <Link to={`/agents/${agent.id}`} style={style}>
+    <Link
+      to={`/agents/${agent.id}`}
+      style={style}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; e.currentTarget.style.transform = 'none' }}
+    >
       {contenu}
     </Link>
   )

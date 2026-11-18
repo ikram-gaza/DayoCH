@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import LoginPage from './pages/auth/LoginPage'
 import TwoFactorPage from './pages/auth/TwoFactorPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
@@ -30,22 +30,35 @@ const ADMIN_ROLES = ['super_admin']
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return <div className="p-6">Chargement…</div>
-  return user ? children : <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/login" replace />
+  if (user.doitChangerMotDePasse && !location.pathname.startsWith('/profil')) {
+    return <Navigate to="/profil?changer-mot-de-passe=1" replace />
+  }
+  return children
 }
 
 function RoleRoute({ roles, children }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />
+  if (user.doitChangerMotDePasse && !location.pathname.startsWith('/profil')) {
+    return <Navigate to="/profil?changer-mot-de-passe=1" replace />
+  }
   if (roles && !roles.includes(user.role)) return <Navigate to="/dashboard" replace />
   return children
 }
 
 function PermissionRoute({ permission, children }) {
   const { user, loading, peut } = useAuth()
+  const location = useLocation()
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />
+  if (user.doitChangerMotDePasse && !location.pathname.startsWith('/profil')) {
+    return <Navigate to="/profil?changer-mot-de-passe=1" replace />
+  }
   if (!peut(permission)) return <Navigate to="/dashboard" replace />
   return children
 }

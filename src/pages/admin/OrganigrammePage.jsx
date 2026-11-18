@@ -1,137 +1,147 @@
-import { useState, useCallback } from 'react'
-import { Users, UserPlus, Search, Filter, ZoomIn, ZoomOut, RefreshCw, History } from 'lucide-react'
-import OrgChart from '../../components/organigramme/OrgChart'
-import EmployeeModal from '../../components/organigramme/EmployeeModal'
-import HistoriqueModal from '../../components/organigramme/HistoriqueModal'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Loader2, Maximize2, Minimize2, RotateCcw, Users } from 'lucide-react'
 import OrganigrammeGroupe from '../../components/organigramme/OrganigrammeGroupe'
-import { useAuth } from '../../context/AuthContext'
-import { USE_MOCK_DATA } from '../../config/donnees'
+import GroupOrgChart from '../../components/organigramme/GroupOrgChart'
 import { apiOrganigramme } from '../../services/apiOrganigramme'
+import { filialesService } from '../../services/filialesService'
 import { exporterTableau } from '../../utils/export'
 import ExportButtons from '../../components/common/ExportButtons'
-import { getFiliales } from '../../config/filiales'
-import { MOCK_EMPLOYEES } from '../../config/organigrammeDemo'
-import { appartientFiliale, normaliserFiliales } from '../../utils/organigramme'
+import { useAuth } from '../../context/AuthContext'
 
-function OrganigrammePage() {
-  const { user, peut } = useAuth()
-  const peutModifier = peut('agent:update')
-  const filialesConfig = getFiliales()
-  const filiales = filialesConfig.map(f => f.nom)
-  const filialeInitiale = filiales.includes(user?.filiale) ? user.filiale : (filiales[0] || '')
+const boutonSecondaire = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  height: 34,
+  padding: '0 12px',
+  borderRadius: 9,
+  border: '1px solid #e7e5e4',
+  background: 'white',
+  color: '#57534e',
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: 'pointer',
+}
+
+function lignesArbre(noeud, profondeur = 0, lignes = []) {
+  if (!noeud) return lignes
+  lignes.push({
+    niveau: noeud.niveau || '',
+    code: noeud.code || '',
+    libelle: `${'  '.repeat(profondeur)}${noeud.libelle || noeud.nom || ''}`,
+    sousTitre: noeud.sousTitre || noeud.fonction || '',
+    effectif: noeud.effectif ?? '',
+  })
+  ;(noeud.enfants || []).forEach((enfant) => lignesArbre(enfant, profondeur + 1, lignes))
+  return lignes
+}
+
+function collecterBranches(noeud, ids = [], estRacine = true) {
+  if (!noeud) return ids
+  if (!estRacine && (noeud.niveau === 'DEPARTEMENT' || noeud.niveau === 'FILIALE')) {
+    ids.push(noeud.id)
+  }
+  ;(noeud.enfants || []).forEach((enfant) => collecterBranches(enfant, ids, false))
+  return ids
+}
+
+export default function OrganigrammePage() {
+  const { user } = useAuth()
   const [vue, setVue] = useState('equipe')
-  const [employees, setEmployees] = useState(MOCK_EMPLOYEES)
-  const [selectedEmployee, setSelectedEmployee] = useState(null)
-  const [showModal, setShowModal] = useState(false)
-  const [showHistorique, setShowHistorique] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterFiliale, setFilterFiliale] = useState(filialeInitiale)
-  const [zoom, setZoom] = useState(1)
-  const [historique, setHistorique] = useState([
-    { id: 1, date: '2026-11-05T14:30:00', action: 'changement_hierarchie', employeNom: 'Aïcha TRAORE', employePoste: 'Chargée de Clientèle', ancienResponsable: 'Fatou KANE', nouveauResponsable: 'Koffi MENSAH', details: "Réorganisation de l'équipe commerciale", auteur: 'Boris KOTCHOFA' },
-    { id: 2, date: '2026-11-04T09:15:00', action: 'creation', employeNom: 'Jean OUEDRAOGO', employePoste: 'Chargé de Clientèle', details: 'Nouveau recrutement équipe commerciale', auteur: 'Amadou DIALLO' },
-    { id: 3, date: '2026-11-03T16:45:00', action: 'modification', employeNom: 'Marie SORO', employePoste: 'Responsable Formation', details: 'Mise à jour des coordonnées', auteur: 'Amadou DIALLO' },
-  ])
+  const [filiales, setFiliales] = useState([])
+  const [filialeId, setFilialeId] = useState('')
+  const [arbre, setArbre] = useState(null)
+  const [chargementFiliales, setChargementFiliales] = useState(true)
+  const [chargement, setChargement] = useState(false)
+  const [erreur, setErreur] = useState(null)
+  const [exportEnCours, setExportEnCours] = useState(null)
+  const [replies, setReplies] = useState(() => new Set())
 
-  const employesFiliale = employees.filter(emp => appartientFiliale(emp, filterFiliale))
-
-  const filteredEmployees = employesFiliale.filter(emp => (
-    searchTerm === '' ||
-    emp.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.poste.toLowerCase().includes(searchTerm.toLowerCase())
-  ))
-
-  const handleChangeResponsable = useCallback((employeeId, newResponsableId) => {
-    if (!peutModifier) return
-    const employee = employees.find(e => e.id === employeeId)
-    const newResponsable = employees.find(e => e.id === newResponsableId)
-    const oldResponsable = employees.find(e => e.id === employee?.responsableId)
-    if (!employee || !newResponsable) return
-    const confirmed = window.confirm(`Déplacer ${employee.prenom} ${employee.nom} sous ${newResponsable.prenom} ${newResponsable.nom} ?`)
-    if (confirmed) {
-      setEmployees(prev => prev.map(emp => emp.id === employeeId ? { ...emp, responsableId: newResponsableId } : emp))
-      setHistorique(prev => [{
-        id: prev.length + 1, date: new Date().toISOString(), action: 'changement_hierarchie',
-        employeNom: `${employee.prenom} ${employee.nom}`, employePoste: employee.poste,
-        ancienResponsable: oldResponsable ? `${oldResponsable.prenom} ${oldResponsable.nom}` : 'Aucun',
-        nouveauResponsable: `${newResponsable.prenom} ${newResponsable.nom}`,
-        details: "Modification via drag & drop", auteur: `${user.prenom} ${user.nom}`,
-      }, ...prev])
+  useEffect(() => {
+    let actif = true
+    const chargerFiliales = async () => {
+      try {
+        const liste = await filialesService.lister()
+        if (!actif) return
+        const actives = (liste || []).filter((f) => f.actif !== false)
+        setFiliales(actives)
+        const preferree = actives.find((f) => String(f.id) === String(user?.filialeId)) || actives[0]
+        setFilialeId(preferree ? String(preferree.id) : '')
+      } catch {
+        if (actif) setFiliales([])
+      } finally {
+        if (actif) setChargementFiliales(false)
+      }
     }
-  }, [employees, user, peutModifier])
+    chargerFiliales()
+    return () => { actif = false }
+  }, [user?.filialeId])
 
-  const handleSelectEmployee = (employee) => {
-    if (!peutModifier) return
-    setSelectedEmployee(employee)
-    setShowModal(true)
-  }
-  const handleAddEmployee = () => {
-    if (!peutModifier) return
-    setSelectedEmployee({ filiale: filterFiliale })
-    setShowModal(true)
-  }
+  const charger = useCallback(async () => {
+    if (!filialeId) {
+      setArbre(null)
+      return
+    }
+    try {
+      setChargement(true)
+      setErreur(null)
+      const donnees = await apiOrganigramme.arbre({ filialeId, inclureAgents: true, seulementActifs: true })
+      setArbre(donnees)
+      setReplies(new Set())
+    } catch (echec) {
+      setErreur(echec)
+      setArbre(null)
+    } finally {
+      setChargement(false)
+    }
+  }, [filialeId])
+
+  useEffect(() => {
+    if (vue !== 'equipe') return
+    if (!filialeId) return
+    charger()
+  }, [vue, filialeId, charger])
+
+  const basculerBranche = useCallback((id) => {
+    setReplies((actuelles) => {
+      const suivantes = new Set(actuelles)
+      if (!suivantes.delete(id)) suivantes.add(id)
+      return suivantes
+    })
+  }, [])
+
+  const idsBranches = useMemo(() => (arbre ? collecterBranches(arbre) : []), [arbre])
+  const filialeCourante = useMemo(
+    () => filiales.find((f) => String(f.id) === String(filialeId)),
+    [filiales, filialeId],
+  )
 
   const exporter = async (format) => {
-    if (!USE_MOCK_DATA) {
-      const filialeId = filialesConfig.find((filiale) => filiale.nom === filterFiliale)?.id
-      return apiOrganigramme.exporter({ filialeId, inclureAgents: true, seulementActifs: true }, format)
-    }
-    exporterTableau({
-      nom: `organigramme-${filterFiliale.toLowerCase().replaceAll(' ', '-')}`,
-      titre: `Organigramme de ${filterFiliale}`,
-      colonnes: [
-        { cle: 'matricule', libelle: 'Matricule' },
-        { cle: 'nom', libelle: 'Collaborateur' },
-        { cle: 'poste', libelle: 'Poste' },
-        { cle: 'filiale', libelle: 'Filiale' },
-        { cle: 'responsable', libelle: 'Responsable' },
-      ],
-      lignes: filteredEmployees.map((employe) => ({
-        matricule: employe.matricule || '',
-        nom: `${employe.prenom} ${employe.nom}`,
-        poste: employe.poste || '',
-        filiale: employe.filiale || '',
-        responsable: employees.find((item) => item.id === employe.responsableId)?.nom || 'Aucun',
-      })),
-      format,
-    })
-  }
-
-  const handleSaveEmployee = (updatedEmployee) => {
-    if (!peutModifier) return
-    const employe = normaliserFiliales(updatedEmployee)
-
-    if (employe.id) {
-      const oldEmployee = employees.find(e => e.id === employe.id)
-      if (oldEmployee.responsableId !== employe.responsableId) {
-        const oldResp = employees.find(e => e.id === oldEmployee.responsableId)
-        const newResp = employees.find(e => e.id === employe.responsableId)
-        setHistorique(prev => [{
-          id: prev.length + 1, date: new Date().toISOString(), action: 'changement_hierarchie',
-          employeNom: `${employe.prenom} ${employe.nom}`, employePoste: employe.poste,
-          ancienResponsable: oldResp ? `${oldResp.prenom} ${oldResp.nom}` : 'Aucun',
-          nouveauResponsable: newResp ? `${newResp.prenom} ${newResp.nom}` : 'Aucun',
-          details: 'Modification du responsable hiérarchique', auteur: `${user.prenom} ${user.nom}`,
-        }, ...prev])
+    setExportEnCours(format)
+    setErreur(null)
+    try {
+      try {
+        await apiOrganigramme.exporter({ filialeId, inclureAgents: true, seulementActifs: true }, format)
+      } catch {
+        exporterTableau({
+          nom: `organigramme-${(filialeCourante?.code || filialeId || 'filiale').toLowerCase()}`,
+          titre: `Organigramme${filialeCourante ? ` - ${filialeCourante.nom}` : ''}`,
+          colonnes: [
+            { cle: 'niveau', libelle: 'Niveau' },
+            { cle: 'code', libelle: 'Code' },
+            { cle: 'libelle', libelle: 'Entité' },
+            { cle: 'sousTitre', libelle: 'Responsable' },
+            { cle: 'effectif', libelle: 'Effectif' },
+          ],
+          lignes: lignesArbre(arbre),
+          format,
+        })
       }
-      setEmployees(prev => prev.map(emp => emp.id === employe.id ? employe : emp))
-    } else {
-      const nouvelId = employees.reduce((max, emp) => Math.max(max, Number(emp.id) || 0), 0) + 1
-      const nouveauxMembres = employees.filter(e => e.filiale === employe.filiale).length + 1
-      const newEmployee = {
-        ...employe,
-        id: nouvelId,
-        matricule: `DAY-${String(nouveauxMembres).padStart(3, '0')}`,
-      }
-      setEmployees(prev => [...prev, newEmployee])
-      setHistorique(prev => [{
-        id: prev.length + 1, date: new Date().toISOString(), action: 'creation',
-        employeNom: `${newEmployee.prenom} ${newEmployee.nom}`, employePoste: newEmployee.poste,
-        details: 'Nouveau collaborateur ajouté', auteur: `${user.prenom} ${user.nom}`,
-      }, ...prev])
+    } catch (echec) {
+      setErreur(echec)
+    } finally {
+      setExportEnCours(null)
     }
-    setShowModal(false)
   }
 
   const entete = (
@@ -142,28 +152,9 @@ function OrganigrammePage() {
           Organigramme
         </h1>
         <p style={{ fontSize: 13, color: '#a8a29e', marginTop: 4 }}>
-          {vue === 'equipe'
-            ? `${filteredEmployees.length} collaborateurs · ${filterFiliale}`
-            : 'Organisation du groupe · Lecture seule'}
+          {vue === 'groupe' ? 'Organisation du groupe' : 'Organisation par filiale'}
         </p>
       </div>
-      {vue === 'equipe' && peutModifier && (
-        <button
-          onClick={handleAddEmployee}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-            padding: '9px 16px', background: '#007FE1', color: 'white',
-            border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600,
-            cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,127,225,0.25)',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = '#006AC0'}
-          onMouseLeave={e => e.currentTarget.style.background = '#007FE1'}
-        >
-          <UserPlus size={15} />
-          Ajouter un collaborateur
-        </button>
-      )}
     </div>
   )
 
@@ -206,156 +197,82 @@ function OrganigrammePage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-
-      {/* ── Header ── */}
       {entete}
       {onglets}
 
-      {/* ── Toolbar ── */}
       <div style={{
         background: 'white', borderRadius: 14, border: '1px solid #e7e5e4',
         boxShadow: '0 1px 4px rgba(0,0,0,0.05)', padding: '12px 16px',
-        display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10,
+        display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12,
       }}>
-        {/* Recherche */}
-        <div style={{ flex: 1, minWidth: 180, maxWidth: 320, position: 'relative' }}>
-          <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#a8a29e' }} />
-          <input
-            type="search"
-            placeholder="Rechercher..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            style={{
-              width: '100%', paddingLeft: 32, paddingRight: 12, paddingTop: 7, paddingBottom: 7,
-              fontSize: 13, border: '1px solid #e7e5e4', borderRadius: 8,
-              outline: 'none', background: '#fafaf9', boxSizing: 'border-box',
-              color: '#1c1917',
-            }}
-          />
-        </div>
-
-        {/* Filtre filiale */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Filter size={14} style={{ color: '#a8a29e', flexShrink: 0 }} />
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12, fontWeight: 700, color: '#57534e' }}>
+          <span>Filiale</span>
           <select
-            value={filterFiliale}
-            onChange={e => setFilterFiliale(e.target.value)}
-            disabled={filiales.length === 0}
+            value={filialeId}
+            onChange={(e) => setFilialeId(e.target.value)}
+            disabled={chargementFiliales || filiales.length === 0}
             style={{
-              padding: '7px 10px', fontSize: 13, border: '1px solid #e7e5e4',
-              borderRadius: 8, outline: 'none', background: '#fafaf9', color: '#1c1917', cursor: 'pointer',
+              height: 34, padding: '0 10px', borderRadius: 9, border: '1px solid #e7e5e4',
+              background: '#fafaf9', color: '#1c1917', fontSize: 12, minWidth: 220,
             }}
           >
-            {filiales.map(f => <option key={f} value={f}>{f}</option>)}
+            {filiales.length === 0 && <option value="">Aucune filiale</option>}
+            {filiales.map((f) => (
+              <option key={f.id} value={String(f.id)}>{f.nom}</option>
+            ))}
           </select>
-        </div>
+        </label>
 
-        <div style={{ width: 1, height: 24, background: '#e7e5e4', flexShrink: 0 }} />
+        <div style={{ flex: 1 }} />
 
-        {/* Contrôles zoom */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button
-            onClick={() => setZoom(prev => Math.max(0.3, +(prev - 0.1).toFixed(1)))}
-            style={{ padding: 6, borderRadius: 7, border: '1px solid #e7e5e4', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-            title="Zoom arrière"
-          >
-            <ZoomOut size={14} style={{ color: '#78716c' }} />
-          </button>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#78716c', minWidth: 40, textAlign: 'center' }}>
-            {Math.round(zoom * 100)}%
-          </span>
-          <button
-            onClick={() => setZoom(prev => Math.min(2, +(prev + 0.1).toFixed(1)))}
-            style={{ padding: 6, borderRadius: 7, border: '1px solid #e7e5e4', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-            title="Zoom avant"
-          >
-            <ZoomIn size={14} style={{ color: '#78716c' }} />
-          </button>
-          <button
-            onClick={() => setZoom(1)}
-            style={{ padding: 6, borderRadius: 7, border: '1px solid #e7e5e4', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-            title="Réinitialiser"
-          >
-            <RefreshCw size={14} style={{ color: '#78716c' }} />
-          </button>
-        </div>
-
-        <div style={{ width: 1, height: 24, background: '#e7e5e4', flexShrink: 0 }} />
-
-        {/* Historique + Export */}
-        <button
-          onClick={() => setShowHistorique(true)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '7px 12px', fontSize: 13, fontWeight: 600,
-            border: '1px solid #e7e5e4', borderRadius: 8, background: 'white',
-            color: '#78716c', cursor: 'pointer', transition: 'all 0.15s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#fafaf9'; e.currentTarget.style.borderColor = '#d6d3d1' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#e7e5e4' }}
-        >
-          <History size={14} />
-          Historique
-        </button>
         <ExportButtons formats={['pdf', 'xlsx']} onExport={exporter} />
+
+        {replies.size > 0 ? (
+          <button type="button" onClick={() => setReplies(new Set())} style={boutonSecondaire}>
+            <Maximize2 size={14} />
+            Tout déplier
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setReplies(new Set(idsBranches))}
+            disabled={idsBranches.length === 0}
+            style={{ ...boutonSecondaire, opacity: idsBranches.length ? 1 : 0.5 }}
+          >
+            <Minimize2 size={14} />
+            Replier les branches
+          </button>
+        )}
+
+        <button type="button" onClick={charger} style={boutonSecondaire} disabled={chargement || exportEnCours || !filialeId}>
+          {chargement ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+          Actualiser
+        </button>
       </div>
 
-      {/* ── Canvas organigramme ── */}
-      {filteredEmployees.length === 0 ? (
-        <div style={{
-          background: 'white', borderRadius: 16, border: '1px dashed #d6d3d1',
-          padding: '48px 24px', textAlign: 'center',
-        }}>
-          <span style={{
-            width: 56, height: 56, borderRadius: 16, background: '#f5f5f4',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            color: '#a8a29e', marginBottom: 14,
-          }}>
-            <Users size={24} />
-          </span>
-          <p style={{ fontSize: 15, fontWeight: 700, color: '#1c1917', margin: 0 }}>
-            Aucun collaborateur
-          </p>
-          <p style={{ fontSize: 13, color: '#78716c', margin: '4px 0 0' }}>
-            {searchTerm
-              ? 'Aucun collaborateur de cette filiale ne correspond à la recherche.'
-              : 'Cette filiale ne contient encore aucun collaborateur.'}
-          </p>
-        </div>
-      ) : (
-        <div style={{
-          height: 560, background: 'white', borderRadius: 16,
-          border: '1px solid #e7e5e4', overflow: 'hidden',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-        }}>
-          <OrgChart
-            employees={filteredEmployees}
-            onSelectEmployee={handleSelectEmployee}
-            onChangeResponsable={handleChangeResponsable}
-            zoom={zoom}
-            lectureSeule={!peutModifier}
-          />
+      {erreur && (
+        <div style={{ background: '#FEF2F1', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: 12, padding: '10px 14px', fontSize: 13 }}>
+          Impossible de charger l’organigramme de la filiale.
         </div>
       )}
 
-      {/* Modals */}
-      {showModal && (
-        <EmployeeModal
-          employee={selectedEmployee}
-          employees={employees}
-          filialeCourante={filterFiliale}
-          onClose={() => setShowModal(false)}
-          onSave={handleSaveEmployee}
-        />
-      )}
-      {showHistorique && (
-        <HistoriqueModal
-          historique={historique}
-          onClose={() => setShowHistorique(false)}
-        />
-      )}
+      <div style={{
+        height: '70vh', minHeight: 520, background: 'white', borderRadius: 16,
+        border: '1px solid #e7e5e4', overflow: 'hidden',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+      }}>
+        {chargement || chargementFiliales ? (
+          <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: '#78716c', fontSize: 13 }}>
+            Chargement de l’organigramme…
+          </div>
+        ) : arbre ? (
+          <GroupOrgChart arbre={arbre} replies={replies} onToggleBranche={basculerBranche} />
+        ) : (
+          <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: '#78716c', fontSize: 13 }}>
+            Aucun organigramme disponible.
+          </div>
+        )}
+      </div>
     </div>
   )
 }
-
-export default OrganigrammePage

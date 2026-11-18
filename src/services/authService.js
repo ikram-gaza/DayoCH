@@ -4,7 +4,7 @@ import { apiAuth } from './apiAuth'
 import { jetons } from './jetons'
 import { normaliserUtilisateur } from './authMappers'
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK_AUTH !== 'false'
+const USE_MOCK = false
 
 const SESSION_KEY = 'dayoch_session_v1'
 
@@ -84,7 +84,7 @@ async function finaliserConnexion(data) {
   const refreshToken = data.refreshToken || null
   if (accessToken) jetons.save(accessToken, refreshToken)
 
-  let user = normaliserUtilisateur(data.utilisateur || data.user)
+  let user = normaliserUtilisateur(data.utilisateur || data.user || data, data)
   const profil = await apiAuth.profil().catch(() => null)
   if (profil) user = { ...user, ...profil }
 
@@ -200,8 +200,15 @@ export const authService = {
         const requiresSetup = Boolean(
           (data.requiresSetup || data.twoFactorSetupRequired) && setupSecret,
         )
-        const base = normaliserUtilisateur(data.utilisateur || data.user || {})
-        const pendingUser = { ...base, challengeToken, requiresSetup, setupSecret }
+        const base = normaliserUtilisateur(data.utilisateur || data.user || {}, data)
+        const pendingUser = {
+          ...base,
+          challengeToken,
+          requiresSetup,
+          setupSecret,
+          qrCodeDataUrl: data.qrCodeDataUrl || null,
+          otpauthUri: data.otpauthUrl || data.otpauthUri || null,
+        }
         writeSession({ user: null, pendingUser })
         return { requires2FA: true, requiresSetup, user: null, pendingUser, challengeToken }
       }
@@ -300,8 +307,12 @@ export const authService = {
   // ── Double authentification TOTP (2FAS, etc.) ──
   prepare2FA: async (user) => {
     if (!USE_MOCK) {
-      const data = await apiAuth.preparer2FA(user?.id)
-      return { secret: data.secret, otpauthUri: data.otpauthUri }
+      const data = await apiAuth.preparer2FA()
+      return {
+        secret: data.secret,
+        otpauthUri: data.otpauthUrl || data.otpauthUri,
+        qrCodeDataUrl: data.qrCodeDataUrl,
+      }
     }
 
     const secret = generateSecret()
@@ -316,8 +327,26 @@ export const authService = {
 
   refreshSetup: async (user) => {
     if (!USE_MOCK) {
-      const data = await apiAuth.preparer2FA(user?.id)
-      return { secret: data.secret, otpauthUri: data.otpauthUri }
+      const data = await apiAuth.preparer2FA()
+      const result = {
+        secret: data.secret,
+        otpauthUri: data.otpauthUrl || data.otpauthUri,
+        qrCodeDataUrl: data.qrCodeDataUrl || null,
+      }
+      const session = readSession()
+      if (session?.pendingUser) {
+        writeSession({
+          ...session,
+          pendingUser: {
+            ...session.pendingUser,
+            setupSecret: result.secret,
+            qrCodeDataUrl: result.qrCodeDataUrl,
+            otpauthUri: result.otpauthUri || null,
+            requiresSetup: true,
+          },
+        })
+      }
+      return result
     }
 
     const secret = generateSecret()
@@ -340,22 +369,35 @@ export const authService = {
 
   enable2FA: async (user, secret, code) => {
     if (!USE_MOCK) {
-      const data = await apiAuth.activer2FA(user?.id, secret, code)
-      return Boolean(data?.success)
+      const data = await apiAuth.activer2FA(code)
+      return { ok: true, codesDeSecours: data?.codesDeSecours || null }
     }
 
-    if (!(await verifyTOTP(secret, code))) return false
+    if (!(await verifyTOTP(secret, code))) return { ok: false }
     setSecret(user, secret)
-    return true
+    return { ok: true, codesDeSecours: null }
   },
 
-  disable2FA: async (user) => {
+  disable2FA: async (user, credentials = {}) => {
     if (!USE_MOCK) {
-      await apiAuth.desactiver2FA(user?.id)
+      const { password, codeTotp } = credentials
+      if (!password || !codeTotp) throw new Error('Le mot de passe et le code 2FA sont requis.')
+      await apiAuth.desactiver2FA(password, codeTotp)
       return
     }
     setSecret(user, null)
     clearPendingSecret(user)
+  },
+
+  changerMotDePasse: async ({ ancien, nouveau }) => {
+    if (!USE_MOCK) {
+      await apiAuth.changerMotDePasse(ancien, nouveau)
+      authService.updateUser({ doitChangerMotDePasse: false })
+      return true
+    }
+    await delay(500)
+    authService.updateUser({ doitChangerMotDePasse: false })
+    return true
   },
 
   has2FA: (user) => (USE_MOCK ? Boolean(getSecret(user)) : Boolean(user?.twoFactorEnabled)),

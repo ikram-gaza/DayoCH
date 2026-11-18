@@ -22,12 +22,15 @@ function TwoFactorPage() {
 
   const requiresSetup = Boolean(pendingUser?.requiresSetup)
   const setupSecret = pendingUser?.setupSecret || ''
-  const otpauthUri = setupSecret
-    ? buildOtpauthUri({
-        secret: setupSecret,
-        accountName: pendingUser?.email || pendingUser?.matricule || 'utilisateur',
-      })
-    : ''
+  const qrCodeDataUrl = pendingUser?.qrCodeDataUrl || ''
+  const otpauthUri =
+    pendingUser?.otpauthUri ||
+    (setupSecret
+      ? buildOtpauthUri({
+          secret: setupSecret,
+          accountName: pendingUser?.email || pendingUser?.matricule || 'utilisateur',
+        })
+      : '')
 
   const handleCopySecret = async () => {
     try {
@@ -340,31 +343,37 @@ function TwoFactorPage() {
                     padding: 12, marginBottom: 12,
                     background: '#fafaf9', border: '1px solid #e7e5e4', borderRadius: 14,
                   }}>
-                    {otpauthUri && <QRCodeSVG value={otpauthUri} size={190} level="M" />}
+                    {qrCodeDataUrl ? (
+                      <img src={qrCodeDataUrl} alt="QR code 2FA" width={190} height={190} />
+                    ) : (
+                      otpauthUri && <QRCodeSVG value={otpauthUri} size={190} level="M" />
+                    )}
                   </div>
                   <p style={{ fontSize: 12, color: '#78716c', margin: '0 0 8px', textAlign: 'center' }}>
                     Scannez avec 2FAS, ou saisissez la clé manuellement :
                   </p>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '9px 12px', borderRadius: 10,
-                    background: '#F0F8FF', border: '1px solid #D7E9FF',
-                  }}>
-                    <code style={{ flex: 1, fontSize: 11, color: '#1c1917', wordBreak: 'break-all', fontFamily: 'monospace' }}>
-                      {setupSecret}
-                    </code>
-                    <button
-                      type="button"
-                      onClick={handleCopySecret}
-                      aria-label="Copier la clé"
-                      style={{
-                        border: 'none', background: 'transparent', cursor: 'pointer',
-                        color: copied ? '#16a34a' : '#007FE1', display: 'flex', padding: 2,
-                      }}
-                    >
-                      {copied ? <Check size={15} /> : <Copy size={15} />}
-                    </button>
-                  </div>
+                  {setupSecret && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '9px 12px', borderRadius: 10,
+                      background: '#F0F8FF', border: '1px solid #D7E9FF',
+                    }}>
+                      <code style={{ flex: 1, fontSize: 11, color: '#1c1917', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                        {setupSecret}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={handleCopySecret}
+                        aria-label="Copier la clé"
+                        style={{
+                          border: 'none', background: 'transparent', cursor: 'pointer',
+                          color: copied ? '#16a34a' : '#007FE1', display: 'flex', padding: 2,
+                        }}
+                      >
+                        {copied ? <Check size={15} /> : <Copy size={15} />}
+                      </button>
+                    </div>
+                  )}
 
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',

@@ -1,91 +1,89 @@
-import { USE_MOCK_DATA } from '../config/donnees'
-import { FILIALES } from '../config/filiales'
-import { lireAgentsMock } from '../config/agentsDemo'
 import { lire } from './apiClient'
 
-const MODULES = [
-  { cle: 'agents', libelle: 'Agents', description: 'Effectif, fiches et parcours professionnels.', chemin: '/agents', permission: 'agent:read', roles: null },
-  { cle: 'trombinoscope', libelle: 'Trombinoscope', description: 'Annuaire illustré du groupe.', chemin: '/trombinoscope', permission: 'trombinoscope:read', roles: null },
-  { cle: 'conges', libelle: 'Congés', description: 'Demandes, soldes et planning.', chemin: '/conges', permission: null, roles: ['employe', 'manager', 'super_admin'] },
-  { cle: 'fournitures', libelle: 'Fournitures', description: 'Demandes de matériel et suivi.', chemin: '/fournitures', permission: null, roles: ['employe', 'manager', 'super_admin'] },
-  { cle: 'stock', libelle: 'Stock', description: 'Inventaire, traçabilité et alertes.', chemin: '/stock', permission: null, roles: ['gestionnaire_stock', 'super_admin'] },
-  { cle: 'organigramme', libelle: 'Organigramme', description: 'Structure hiérarchique du groupe.', chemin: '/organigramme', permission: 'organigramme:read', roles: null },
-  { cle: 'utilisateurs', libelle: 'Utilisateurs', description: 'Comptes et droits de connexion.', chemin: '/utilisateurs', permission: null, roles: ['super_admin'] },
-]
-
-function agentsDuPerimetre(perimetre) {
-  return lireAgentsMock().filter(
-    (agent) => agent.actif && (!perimetre || perimetre === 'groupe' || agent.filialeId === perimetre || agent.filialeIds?.includes(perimetre)),
-  )
+function tableau(brut) {
+  if (Array.isArray(brut)) return brut
+  if (Array.isArray(brut?.data)) return brut.data
+  if (Array.isArray(brut?.items)) return brut.items
+  return []
 }
 
-function moduleAccessible(module, role, permissions) {
-  if (module.permission) return permissions.includes(module.permission) || role === 'super_admin'
-  if (module.roles) return module.roles.includes(role)
-  return true
+function nombre(valeur, defaut = 0) {
+  const n = Number(valeur)
+  return Number.isFinite(n) ? n : defaut
 }
 
-function tableauDeBordMock(perimetre, role, permissions) {
-  const agents = agentsDuPerimetre(perimetre)
-  const effectif = agents.length
-  const avecPhoto = agents.filter((agent) => agent.photoFichier || agent.photoUrl).length
-  const sansCompte = agents.filter((agent) => !agent.userId).length
-  const sansEmail = agents.filter((agent) => !agent.email).length
-  const gerants = agents.filter((agent) => agent.estGerant).length
-  const pourcentagePhotos = effectif ? Math.round((avecPhoto / effectif) * 100) : 0
-  const libelle = perimetre && perimetre !== 'groupe'
-    ? FILIALES.find((filiale) => filiale.id === perimetre)?.nom || 'Filiale'
-    : 'Groupe Dayo'
+function texte(valeur, defaut = '') {
+  return valeur == null || valeur === '' ? defaut : String(valeur)
+}
 
-  const pointsAttention = []
-  if (sansCompte > 0) {
-    pointsAttention.push({ niveau: 'alerte', message: `${sansCompte} agent(s) sans compte de connexion.`, chemin: '/agents?avecCompte=false' })
+function normaliserIndicateur(item = {}, index = 0) {
+  const cle = texte(item.cle || item.code || item.id || item.key || `indicateur_${index}`).toLowerCase()
+  return {
+    cle,
+    libelle: texte(item.libelle || item.label || item.titre || item.nom || cle),
+    valeur: item.valeur ?? item.value ?? item.total ?? item.count ?? 0,
+    precision: item.precision ?? item.description ?? item.detail ?? item.sousTitre ?? null,
   }
-  if (sansEmail > 0) {
-    pointsAttention.push({ niveau: 'info', message: `${sansEmail} agent(s) sans adresse email.`, chemin: '/agents?avecEmail=false' })
+}
+
+function normaliserModule(item = {}, index = 0) {
+  const cle = texte(item.cle || item.code || item.id || item.key || `module_${index}`).toLowerCase()
+  const chemin = item.chemin || item.path || item.route || item.url || null
+  const disponible = item.disponible ?? item.enabled ?? item.actif ?? Boolean(chemin)
+  return {
+    cle,
+    libelle: texte(item.libelle || item.label || item.titre || item.nom || cle),
+    description: texte(item.description || item.sousTitre || item.detail || ''),
+    disponible: Boolean(disponible),
+    chemin: chemin || '#',
   }
-  if (effectif - avecPhoto > 0) {
-    pointsAttention.push({ niveau: 'info', message: `${effectif - avecPhoto} agent(s) sans photo au trombinoscope.`, chemin: '/trombinoscope' })
+}
+
+function normaliserPoint(item = {}, index = 0) {
+  if (typeof item === 'string') {
+    return { message: item, niveau: 'info', chemin: null, cle: `point_${index}` }
   }
+  return {
+    cle: texte(item.cle || item.code || item.id || `point_${index}`),
+    message: texte(item.message || item.libelle || item.label || item.description || ''),
+    niveau: texte(item.niveau || item.type || item.severite || 'info').toLowerCase(),
+    chemin: item.chemin || item.path || item.route || item.lien || null,
+  }
+}
+
+function normaliserFiliale(item = {}, index = 0) {
+  return {
+    code: texte(item.code || item.sigle || item.id || `F${index + 1}`),
+    nom: texte(item.nom || item.libelle || item.filiale || ''),
+    effectif: nombre(item.effectif ?? item.total ?? item.agents ?? item.nbAgents ?? 0),
+    avecPhoto: nombre(item.avecPhoto ?? item.photos ?? item.nbPhotos ?? 0),
+  }
+}
+
+function normaliserTableauDeBord(brut = {}) {
+  const data = brut?.data && !Array.isArray(brut.data) ? brut.data : brut
+
+  const indicateursBruts = tableau(data.indicateurs || data.kpis || data.stats || data.metriques)
+  const modulesBruts = tableau(data.modules || data.accesRapides || data.raccourcis)
+  const pointsBruts = tableau(data.pointsAttention || data.alertes || data.attentions || data.aTraiter)
+  const filialesBrutes = tableau(data.effectifParFiliale || data.filiales || data.repartitionFiliales)
+
+  const perimetreBrut = data.perimetre || {}
+  const perimetre = typeof perimetreBrut === 'string'
+    ? { libelle: perimetreBrut }
+    : { libelle: texte(perimetreBrut.libelle || perimetreBrut.label || perimetreBrut.nom || data.perimetreLibelle || '') }
 
   return {
-    perimetre: { filialeId: perimetre === 'groupe' ? null : perimetre, libelle },
-    indicateurs: [
-      { cle: 'effectif', libelle: 'Effectif actif', valeur: effectif, precision: `${gerants} gérant(s)` },
-      { cle: 'photos', libelle: 'Couverture photo', valeur: pourcentagePhotos, precision: `${avecPhoto} sur ${effectif} agents` },
-      { cle: 'sans_compte', libelle: 'Sans compte', valeur: sansCompte, precision: 'Connexion impossible' },
-      { cle: 'sans_email', libelle: 'Sans email', valeur: sansEmail, precision: 'Contacts incomplets' },
-      { cle: 'gerants', libelle: 'Gérants', valeur: gerants, precision: 'Direction de filiale' },
-      { cle: 'filiales', libelle: 'Filiales couvertes', valeur: new Set(agents.flatMap((agent) => agent.filialeIds || [])).size, precision: 'Sur le périmètre' },
-    ],
-    effectifParFiliale: FILIALES.map((filiale) => {
-      const membres = agents.filter((agent) => agent.filialeId === filiale.id)
-      return {
-        code: filiale.code,
-        nom: filiale.nom,
-        effectif: membres.length,
-        avecPhoto: membres.filter((agent) => agent.photoFichier || agent.photoUrl).length,
-      }
-    }).filter((filiale) => filiale.effectif > 0),
-    pointsAttention,
-    modules: MODULES.map((module) => ({
-      ...module,
-      disponible: moduleAccessible(module, role, permissions),
-    })),
+    perimetre,
+    indicateurs: indicateursBruts.map(normaliserIndicateur),
+    modules: modulesBruts.map(normaliserModule),
+    pointsAttention: pointsBruts.map(normaliserPoint),
+    effectifParFiliale: filialesBrutes.map(normaliserFiliale),
   }
 }
 
 export const apiPilotage = {
-  tableauDeBord: async (perimetre = 'groupe', role = 'employe', permissions = []) => {
-    if (!USE_MOCK_DATA) return lire('/pilotage/tableau-de-bord')
-    return tableauDeBordMock(perimetre, role, permissions)
-  },
+  tableauDeBord: async () => normaliserTableauDeBord(await lire('/pilotage/tableau-de-bord')),
 
-  modules: async (role = 'employe', permissions = []) => {
-    if (!USE_MOCK_DATA) return lire('/pilotage/modules')
-    return MODULES.map((module) => ({
-      ...module,
-      disponible: moduleAccessible(module, role, permissions),
-    }))
-  },
+  modules: async () => tableau(await lire('/pilotage/modules')).map(normaliserModule),
 }

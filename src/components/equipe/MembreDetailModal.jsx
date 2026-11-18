@@ -2,18 +2,7 @@ import {
   X, Mail, Phone, Building2, Hash, Briefcase,
   Calendar, MessageSquare, Inbox,
 } from 'lucide-react'
-import {
-  ROLES_UTILISATEUR,
-  STATUTS_UTILISATEUR,
-} from '../../services/utilisateursService'
-import {
-  TYPES_CONGES,
-  STATUTS_CONGES,
-} from '../../services/congesService'
-import {
-  TYPES_SOLLICITATIONS,
-  STATUTS_SOLLICITATIONS,
-} from '../../services/sollicitationsService'
+import { infoRole, STATUTS_UTILISATEUR } from '../../services/utilisateursService'
 
 const formatDate = (value) => {
   if (!value) return '—'
@@ -49,7 +38,7 @@ function EmptyLine({ children }) {
 export default function MembreDetailModal({ isOpen, membre, conges = [], sollicitations = [], onClose }) {
   if (!isOpen || !membre) return null
 
-  const role = ROLES_UTILISATEUR[membre.role] || ROLES_UTILISATEUR.employe
+  const role = infoRole(membre.role)
   const statut = STATUTS_UTILISATEUR[membre.statut] || STATUTS_UTILISATEUR.actif
   const avatar = `${membre.prenom?.[0] || ''}${membre.nom?.[0] || ''}`.toUpperCase()
 
@@ -66,7 +55,6 @@ export default function MembreDetailModal({ isOpen, membre, conges = [], sollici
         maxHeight: '90vh', overflowY: 'auto',
         border: '1px solid #e7e5e4',
       }}>
-        {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
           padding: '20px 24px', borderBottom: '1px solid #f5f5f4', gap: 12,
@@ -84,7 +72,7 @@ export default function MembreDetailModal({ isOpen, membre, conges = [], sollici
               <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1c1917', margin: 0 }}>
                 {membre.prenom} {membre.nom}
               </h2>
-              <p style={{ fontSize: 13, color: '#78716c', margin: '2px 0 0' }}>{membre.poste}</p>
+              <p style={{ fontSize: 13, color: '#78716c', margin: '2px 0 0' }}>{membre.poste || '—'}</p>
               <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                 <span style={{ padding: '2px 9px', borderRadius: 999, fontSize: 10, fontWeight: 700, color: role.color, background: role.bg }}>
                   {role.label}
@@ -109,70 +97,33 @@ export default function MembreDetailModal({ isOpen, membre, conges = [], sollici
         </div>
 
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 22 }}>
-          {/* Coordonnées */}
           <div>
-            <Ligne icon={Mail} label="E-mail">{membre.email}</Ligne>
+            <Ligne icon={Mail} label="E-mail">{membre.email || '—'}</Ligne>
             <Ligne icon={Phone} label="Téléphone">{membre.telephone || '—'}</Ligne>
-            <Ligne icon={Building2} label="Filiale">{membre.filiale}</Ligne>
-            <Ligne icon={Hash} label="Matricule">{membre.matricule}</Ligne>
+            <Ligne icon={Building2} label="Filiale">{membre.filiale || '—'}</Ligne>
+            <Ligne icon={Hash} label="Matricule">{membre.matricule || '—'}</Ligne>
             <Ligne icon={Briefcase} label="Date d'embauche">{formatDate(membre.dateEmbauche)}</Ligne>
           </div>
 
-          {/* Congés */}
           <div>
             <p style={{ fontSize: 11, fontWeight: 700, color: '#78716c', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Calendar size={13} /> Congés récents
             </p>
             {conges.length === 0 ? (
-              <EmptyLine>Aucune demande de congé.</EmptyLine>
+              <EmptyLine>Aucune donnée de congé disponible via l’API.</EmptyLine>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {conges.slice(0, 4).map((c) => {
-                  const type = TYPES_CONGES.find((t) => t.id === c.typeId) || TYPES_CONGES[0]
-                  const st = STATUTS_CONGES[c.statut] || STATUTS_CONGES.en_attente
-                  return (
-                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 12px', borderRadius: 10, background: '#fafaf9' }}>
-                      <span style={{ minWidth: 0 }}>
-                        <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1c1917' }}>{type.label}</span>
-                        <span style={{ display: 'block', fontSize: 11, color: '#78716c' }}>
-                          {formatDate(c.dateDebut)} → {formatDate(c.dateFin)} · {c.nbJours} j
-                        </span>
-                      </span>
-                      <span style={{ flexShrink: 0, padding: '2px 8px', borderRadius: 999, fontSize: 10, fontWeight: 700, color: st.color, background: st.bg }}>
-                        {st.label}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
+              <div style={{ fontSize: 12, color: '#78716c' }}>{conges.length} élément(s)</div>
             )}
           </div>
 
-          {/* Sollicitations */}
           <div>
             <p style={{ fontSize: 11, fontWeight: 700, color: '#78716c', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
               <MessageSquare size={13} /> Sollicitations récentes
             </p>
             {sollicitations.length === 0 ? (
-              <EmptyLine>Aucune sollicitation.</EmptyLine>
+              <EmptyLine>Aucune donnée de sollicitation disponible via l’API.</EmptyLine>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {sollicitations.slice(0, 4).map((s) => {
-                  const type = TYPES_SOLLICITATIONS.find((t) => t.id === s.typeId) || TYPES_SOLLICITATIONS[0]
-                  const st = STATUTS_SOLLICITATIONS[s.statut] || STATUTS_SOLLICITATIONS.en_attente
-                  return (
-                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 12px', borderRadius: 10, background: '#fafaf9' }}>
-                      <span style={{ minWidth: 0 }}>
-                        <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1c1917', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.objet}</span>
-                        <span style={{ display: 'block', fontSize: 11, color: '#78716c' }}>{type.label} · {formatDate(s.dateCreation)}</span>
-                      </span>
-                      <span style={{ flexShrink: 0, padding: '2px 8px', borderRadius: 999, fontSize: 10, fontWeight: 700, color: st.color, background: st.bg }}>
-                        {st.label}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
+              <div style={{ fontSize: 12, color: '#78716c' }}>{sollicitations.length} élément(s)</div>
             )}
           </div>
         </div>

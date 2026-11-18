@@ -1,10 +1,4 @@
-/**
- * Service de gestion des utilisateurs - Groupe Dayo
- *
- * Annuaire des collaborateurs et de leurs accès à DayoPI.
- * Les données sont persistées en localStorage en attendant le backend.
- */
-
+import { api } from './apiClient'
 import { FILIALES } from '../config/filiales'
 
 export const ROLES_UTILISATEUR = {
@@ -14,158 +8,239 @@ export const ROLES_UTILISATEUR = {
   super_admin: { label: 'Super administrateur', color: '#007FE1', bg: '#E5F2FD' },
 }
 
+export const ROLES_BACKEND = {
+  SUPER_ADMIN: { label: 'Super administrateur', color: '#007FE1', bg: '#E5F2FD', ui: 'super_admin' },
+  ADMIN_FILIALE: { label: 'Administrateur filiale', color: '#0369a1', bg: '#e0f2fe', ui: 'super_admin' },
+  GERANT: { label: 'Gérant', color: '#16a34a', bg: '#dcfce7', ui: 'manager' },
+  RESPONSABLE_STOCK: { label: 'Responsable stock', color: '#7c3aed', bg: '#f3e8ff', ui: 'gestionnaire_stock' },
+  RESPONSABLE_SERVICE: { label: 'Responsable service', color: '#0f766e', bg: '#ccfbf1', ui: 'manager' },
+  AGENT: { label: 'Agent', color: '#a16207', bg: '#fef9c3', ui: 'employe' },
+}
+
 export const STATUTS_UTILISATEUR = {
   actif: { label: 'Actif', color: '#15803d', bg: '#dcfce7', dot: '#22c55e' },
   inactif: { label: 'Inactif', color: '#57534e', bg: '#f5f5f4', dot: '#a8a29e' },
-  suspendu: { label: 'Suspendu', color: '#b91c1c', bg: '#FEF2F1', dot: '#ef4444' },
 }
 
-// Filiales proposées + siège (Groupe)
 export const FILIALES_UTILISATEUR = [
   { nom: 'Dayo Group', code: 'DG' },
   ...FILIALES.map((f) => ({ nom: f.nom, code: f.code })),
 ]
 
-const STORAGE_KEY = 'dayoch_utilisateurs_v2'
+const ROLE_ORDER = [
+  'SUPER_ADMIN',
+  'ADMIN_FILIALE',
+  'GERANT',
+  'RESPONSABLE_SERVICE',
+  'RESPONSABLE_STOCK',
+  'AGENT',
+]
 
-const INITIAL_UTILISATEURS = []
-
-function lireTout() {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY)
-    if (data) return JSON.parse(data)
-  } catch {
-    // Ignorer
+export function infoRole(role) {
+  const code = typeof role === 'string' ? role : role?.code
+  return ROLES_BACKEND[code] || ROLES_UTILISATEUR[code] || {
+    label: code || '—',
+    color: '#57534e',
+    bg: '#f5f5f4',
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_UTILISATEURS))
-  return INITIAL_UTILISATEURS
 }
 
-function ecrireTout(liste) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(liste))
-  } catch {
-    // Ignorer
-  }
+export function messageErreur(error) {
+  const data = error?.response?.data
+  const message = data?.message || data?.error || error?.message
+  return Array.isArray(message) ? message.join(' ') : message || 'Une erreur est survenue.'
 }
 
 const nomComplet = (u) => `${u.prenom || ''} ${u.nom || ''}`.trim()
 
-function genererMatricule(liste, filiale) {
-  const config = FILIALES_UTILISATEUR.find((f) => f.nom === filiale)
-  const prefix = config?.code || 'DAY'
-  const numeros = liste
-    .filter((u) => u.matricule?.startsWith(`${prefix}-`))
-    .map((u) => parseInt(u.matricule.split('-')[1], 10))
-    .filter((n) => !Number.isNaN(n))
-  const suivant = (numeros.length ? Math.max(...numeros) : 0) + 1
-  return `${prefix}-${String(suivant).padStart(3, '0')}`
+function extraireListe(data) {
+  if (Array.isArray(data)) return data
+  const source = data?.data ?? data
+  if (Array.isArray(source)) return source
+  for (const cle of ['items', 'utilisateurs', 'users', 'resultats', 'results', 'records']) {
+    if (Array.isArray(source?.[cle])) return source[cle]
+  }
+  return []
+}
+
+function extraireObjet(data) {
+  if (!data || typeof data !== 'object') return {}
+  return data.utilisateur || data.user || data.data || data
+}
+
+function codeRole(role) {
+  if (typeof role === 'string') return role
+  return role?.code || role?.role?.code || role?.nom || null
+}
+
+function normaliserUtilisateur(brut = {}) {
+  const agent = brut.agent || {}
+  const filialeBrute = brut.filiale ?? agent.filiale
+  const filiale = filialeBrute && typeof filialeBrute === 'object' ? filialeBrute : null
+  const rolesSource = brut.roles ?? brut.roleCodes ?? brut.role ?? brut.roleCode
+  const roles = (Array.isArray(rolesSource) ? rolesSource : [rolesSource])
+    .map(codeRole)
+    .filter(Boolean)
+  const role = ROLE_ORDER.find((item) => roles.includes(item)) || roles[0] || 'AGENT'
+  const nomCompletBrut = brut.nomComplet || agent.nomComplet || ''
+  const morceaux = nomCompletBrut.split(/\s+/).filter(Boolean)
+  const nom = brut.nom || agent.nom || morceaux.slice(1).join(' ') || ''
+  const prenom = brut.prenom || agent.prenom || morceaux[0] || ''
+  const actif = brut.actif !== false && String(brut.statut || '').toLowerCase() !== 'inactif'
+  const statut = actif ? 'actif' : 'inactif'
+
+  return {
+    ...brut,
+    id: brut.id ?? brut.userId ?? brut.utilisateurId ?? null,
+    nom,
+    prenom,
+    email: brut.email || '',
+    telephone: brut.telephone || agent.telephone || '',
+    matricule: brut.matricule || agent.matricule || '',
+    poste: brut.poste || agent.poste || agent.fonction || brut.fonction || '',
+    filiale: filiale?.nom || (typeof filialeBrute === 'string' ? filialeBrute : '') || '',
+    filialeId: brut.filialeId ?? agent.filialeId ?? filiale?.id ?? null,
+    role,
+    roleUi: ROLES_BACKEND[role]?.ui || role,
+    roleLabel: infoRole(role).label,
+    roles,
+    actif,
+    statut,
+    twoFactorEnabled: Boolean(
+      brut.twoFactorEnabled ?? brut.twoFactorActif ?? brut.doubleAuthentificationActive,
+    ),
+    dateEmbauche: brut.dateEmbauche || agent.dateEmbauche || '',
+    dernierAcces: brut.dernierAcces || brut.lastLoginAt || null,
+    managerId: brut.managerId ?? agent.managerId ?? brut.manager?.id ?? null,
+  }
+}
+
+function payloadCommun(data) {
+  const payload = {
+    email: data.email?.trim() || undefined,
+    nom: data.nom?.trim(),
+    prenom: data.prenom?.trim(),
+    telephone: data.telephone?.trim() || undefined,
+    filialeId: data.filialeId || undefined,
+    roleCodes: data.role ? [data.role] : (Array.isArray(data.roleCodes) ? data.roleCodes : undefined),
+    actif: data.statut ? data.statut === 'actif' : data.actif,
+  }
+  Object.keys(payload).forEach((cle) => {
+    if (payload[cle] === undefined || payload[cle] === '') delete payload[cle]
+  })
+  if (payload.email === undefined) delete payload.email
+  return payload
+}
+
+function rolesDisponiblesParDefaut() {
+  return Object.entries(ROLES_BACKEND).map(([code, info]) => ({ code, ...info }))
 }
 
 export const utilisateursService = {
-  getAll: () => lireTout(),
+  isMock: false,
+  getRolesDisponibles: rolesDisponiblesParDefaut,
+  getFilialesDisponibles: () => FILIALES_UTILISATEUR.map((f) => ({ ...f })),
 
-  getById: (id) => lireTout().find((u) => u.id === id) || null,
-
-  // Équipe d'un manager : ses rattachements directs, sinon sa filiale
-  getEquipe: (manager) => {
-    const liste = lireTout()
-    if (!manager) return []
-    const autres = liste.filter((u) => u.id !== manager.id)
-    if (manager.role === 'super_admin') return autres
-    const directs = autres.filter((u) => u.managerId === manager.id)
-    if (directs.length > 0) return directs
-    return autres.filter((u) => u.filiale === manager.filiale)
+  lister: async () => {
+    const { data } = await api.get('/users')
+    return extraireListe(data).map(normaliserUtilisateur)
   },
 
-  emailExiste: (email, excludeId = null) => {
+  listerRoles: async () => {
+    try {
+      const { data } = await api.get('/rbac/roles')
+      const roles = extraireListe(data)
+        .map((role) => {
+          const code = codeRole(role)
+          if (!code) return null
+          const info = infoRole(code)
+          return { code, label: role?.libelle || role?.label || role?.nom || info.label, color: info.color, bg: info.bg }
+        })
+        .filter(Boolean)
+      return roles.length ? roles : rolesDisponiblesParDefaut()
+    } catch {
+      return rolesDisponiblesParDefaut()
+    }
+  },
+
+  listerFiliales: async () => {
+    try {
+      const { data } = await api.get('/filiales', { params: { sortOrder: 'ASC' } })
+      const filiales = extraireListe(data)
+        .map((filiale) => ({
+          id: filiale.id,
+          nom: filiale.nom || filiale.libelle,
+          code: filiale.code,
+        }))
+        .filter((filiale) => filiale.nom)
+      return filiales.length ? filiales : FILIALES_UTILISATEUR.map((f) => ({ ...f }))
+    } catch {
+      return FILIALES_UTILISATEUR.map((f) => ({ ...f }))
+    }
+  },
+
+  getEquipe: async (manager) => {
+    const liste = await utilisateursService.lister()
+    if (!manager) return []
+    const autres = liste.filter((u) => String(u.id) !== String(manager.id))
+    if (manager.role === 'super_admin' || manager.role === 'SUPER_ADMIN') return autres
+    const directs = autres.filter((u) => String(u.managerId) === String(manager.id))
+    if (directs.length > 0) return directs
+    return autres.filter((u) => u.filiale === manager.filiale || String(u.filialeId) === String(manager.filialeId))
+  },
+
+  emailExiste: (email, excludeId = null, liste = []) => {
     const cible = email?.trim().toLowerCase()
     if (!cible) return false
-    return lireTout().some((u) => u.email?.toLowerCase() === cible && u.id !== excludeId)
-  },
-
-  creerUtilisateur: (data) => {
-    const liste = lireTout()
-    const maintenant = new Date().toISOString()
-    const nouvel = {
-      id: Date.now(),
-      nom: data.nom?.trim().toUpperCase(),
-      prenom: data.prenom?.trim(),
-      email: data.email?.trim().toLowerCase(),
-      telephone: data.telephone?.trim() || '',
-      matricule: data.matricule?.trim() || genererMatricule(liste, data.filiale),
-      role: data.role || 'employe',
-      filiale: data.filiale || FILIALES_UTILISATEUR[1].nom,
-      managerId: data.managerId ?? null,
-      poste: data.poste?.trim() || 'Collaborateur',
-      statut: data.statut || 'actif',
-      twoFactorEnabled: Boolean(data.twoFactorEnabled),
-      dateEmbauche: data.dateEmbauche || maintenant.slice(0, 10),
-      dateCreation: maintenant,
-      dernierAcces: null,
-    }
-    ecrireTout([nouvel, ...liste])
-    return nouvel
-  },
-
-  modifierUtilisateur: (id, updates) => {
-    const liste = lireTout()
-    const misAJour = liste.map((u) => {
-      if (u.id !== id) return u
-      return {
-        ...u,
-        ...updates,
-        nom: updates.nom ? updates.nom.trim().toUpperCase() : u.nom,
-        prenom: updates.prenom ? updates.prenom.trim() : u.prenom,
-        email: updates.email ? updates.email.trim().toLowerCase() : u.email,
-        matricule: updates.matricule?.trim() || u.matricule,
-        poste: updates.poste?.trim() || u.poste,
-        dateModification: new Date().toISOString(),
-      }
-    })
-    ecrireTout(misAJour)
-    return misAJour
-  },
-
-  changerStatut: (id, statut) => {
-    const liste = lireTout()
-    const misAJour = liste.map((u) => (u.id === id ? { ...u, statut } : u))
-    ecrireTout(misAJour)
-    return misAJour
-  },
-
-  basculer2FA: (id) => {
-    const liste = lireTout()
-    const misAJour = liste.map((u) =>
-      u.id === id ? { ...u, twoFactorEnabled: !u.twoFactorEnabled } : u
+    return liste.some(
+      (u) => u.email?.toLowerCase() === cible && String(u.id) !== String(excludeId),
     )
-    ecrireTout(misAJour)
-    return misAJour
   },
 
-  supprimerUtilisateur: (id) => {
-    const misAJour = lireTout().filter((u) => u.id !== id)
-    ecrireTout(misAJour)
-    return misAJour
-  },
-
-  // Simulation : aucun mot de passe n'est stocké côté front
-  reinitialiserMotDePasse: () => {
-    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
-    let motDePasse = ''
-    for (let i = 0; i < 10; i += 1) {
-      motDePasse += alphabet[Math.floor(Math.random() * alphabet.length)]
+  creer: async (data) => {
+    const payload = {
+      ...payloadCommun(data),
+      matricule: data.matricule?.trim(),
+      passwordInitial: data.passwordInitial,
     }
-    return motDePasse
+    if (!payload.roleCodes) payload.roleCodes = ['AGENT']
+    if (payload.actif === undefined) payload.actif = true
+    const { data: reponse } = await api.post('/users', payload)
+    return normaliserUtilisateur(extraireObjet(reponse))
   },
 
-  getStats: (liste = lireTout()) => {
+  modifier: async (id, data) => {
+    const { data: reponse } = await api.patch(`/users/${id}`, payloadCommun(data))
+    return normaliserUtilisateur(extraireObjet(reponse))
+  },
+
+  changerStatut: async (id, statut) => {
+    await api.patch(`/users/${id}`, { actif: statut === 'actif' })
+    return true
+  },
+
+  basculer2FA: async () => {
+    throw new Error('La gestion de la double authentification d’un autre utilisateur n’est pas disponible sur l’API actuelle.')
+  },
+
+  supprimer: async (id) => {
+    await api.delete(`/users/${id}`)
+    return true
+  },
+
+  reinitialiserMotDePasse: async () => {
+    throw new Error('La réinitialisation directe du mot de passe n’est pas disponible sur l’API /users. Utilisez le flux de demande de réinitialisation.')
+  },
+
+  getStats: (liste = []) => {
     return {
       total: liste.length,
-      actifs: liste.filter((u) => u.statut === 'actif').length,
-      inactifs: liste.filter((u) => u.statut !== 'actif').length,
+      actifs: liste.filter((u) => u.actif !== false && u.statut === 'actif').length,
+      inactifs: liste.filter((u) => u.actif === false || u.statut !== 'actif').length,
       deuxFA: liste.filter((u) => u.twoFactorEnabled).length,
-      managers: liste.filter((u) => u.role === 'manager' || u.role === 'super_admin').length,
+      managers: liste.filter((u) =>
+        ['manager', 'super_admin', 'GERANT', 'ADMIN_FILIALE', 'RESPONSABLE_SERVICE', 'SUPER_ADMIN'].includes(u.role),
+      ).length,
     }
   },
 

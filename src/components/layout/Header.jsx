@@ -9,11 +9,18 @@ const EASE = [0.22, 1, 0.36, 1]
 const mockNotifications = []
 
 export default function Header() {
-  const { user, filialeCourante, estCompteGroupe, changerFiliale } = useAuth()
+  const { user, filialeCourante, filialesDisponibles, estCompteGroupe, changerFiliale } = useAuth()
   const [showNotif, setShowNotif] = useState(false)
   const unread = mockNotifications.filter((n) => n.unread).length
-  const filiales = getFiliales()
-  const filialeAffichee = filiales.find((filiale) => filiale.id === filialeCourante)?.nom || user?.filiale
+  const filialesStatique = getFiliales()
+  const filialesGroupe = (Array.isArray(filialesDisponibles) && filialesDisponibles.length > 0)
+    ? filialesDisponibles
+    : filialesStatique
+
+  const filialeAffichee = filialeCourante
+    ? (filialesDisponibles?.find((filiale) => filiale.id === filialeCourante)
+      || filialesStatique.find((filiale) => filiale.id === filialeCourante))?.nom || user?.filiale
+    : (estCompteGroupe ? 'Groupe (toutes filiales)' : (user?.filiale || 'Groupe'))
 
   return (
     <header style={{
@@ -68,9 +75,11 @@ export default function Header() {
                 fontSize: 12,
                 fontWeight: 700,
                 cursor: 'pointer',
+                maxWidth: 240,
               }}
             >
-              {filiales.map((filiale) => (
+              <option value="">Groupe (toutes filiales)</option>
+              {filialesGroupe.map((filiale) => (
                 <option key={filiale.id} value={filiale.id}>{filiale.nom}</option>
               ))}
             </select>

@@ -1,14 +1,31 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { FILIALES } from '../config/filiales'
 import { authService } from '../services/authService'
+import { filialesService } from '../services/filialesService'
 import { jetons } from '../services/jetons'
 
 const AuthContext = createContext(null)
 
+function estIdFilialeApi(id) {
+  return typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+}
+
+function estSlugStatique(id) {
+  return typeof id === 'string' && /^dayo-/i.test(id)
+}
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(() => authService.getSession())
   const [loading, setLoading] = useState(() => authService.canRestoreSession())
-  const [filialeCourante, setFilialeCourante] = useState(() => jetons.filiale())
+  const [filialeCourante, setFilialeCouranteState] = useState(() => {
+    const stockee = jetons.filiale()
+    if (estSlugStatique(stockee)) {
+      jetons.setFiliale(null)
+      return null
+    }
+    return stockee
+  })
+  const [filialesDisponibles, setFilialesDisponibles] = useState([])
 
   useEffect(() => {
     let active = true
@@ -41,22 +58,62 @@ export function AuthProvider({ children }) {
   const pendingUser = session?.pendingUser ?? null
   const estCompteGroupe = Boolean(user && !user.filialeId)
 
+  const appliquerFiliale = useCallback((filialeId) => {
+    const valeur = filialeId || null
+    setFilialeCouranteState(valeur)
+    jetons.setFiliale(valeur)
+  }, [])
+
   useEffect(() => {
-    if (!user) return
+    if (!user) {
+      setFilialesDisponibles([])
+      return
+    }
 
     if (user.filialeId) {
+      setFilialesDisponibles([])
       if (filialeCourante !== user.filialeId) {
-        setFilialeCourante(user.filialeId)
-        jetons.setFiliale(user.filialeId)
+        appliquerFiliale(user.filialeId)
       }
       return
     }
 
-    if (!filialeCourante && FILIALES.length > 0) {
-      setFilialeCourante(FILIALES[0].id)
-      jetons.setFiliale(FILIALES[0].id)
+    // Nettoyage immédiat des anciens identifiants statiques (ex: "dayo-benin")
+    // qui provoquent des erreurs backend lorsque transmis en X-Filiale-Id.
+    if (estSlugStatique(jetons.filiale())) {
+      appliquerFiliale(null)
     }
-  }, [user, filialeCourante])
+
+    let annule = false
+    ;(async () => {
+      try {
+        const liste = await filialesService.lister()
+        if (annule) return
+        setFilialesDisponibles(Array.isArray(liste) ? liste : [])
+
+        const ids = new Set((liste || []).map((filiale) => filiale.id))
+        const stockee = jetons.filiale()
+        if (stockee && ids.has(stockee)) {
+          appliquerFiliale(stockee)
+          return
+        }
+        // Vue groupe par défaut (pas d'en-tête X-Filiale-Id) pour éviter les erreurs
+        // de périmètre ; l'utilisateur peut choisir une filiale dans le sélecteur.
+        appliquerFiliale(null)
+      } catch {
+        if (annule) return
+        setFilialesDisponibles(FILIALES.map((filiale) => ({ ...filiale })))
+        const stockee = jetons.filiale()
+        if (!stockee || estSlugStatique(stockee) || !estIdFilialeApi(stockee)) {
+          appliquerFiliale(null)
+        }
+      }
+    })()
+
+    return () => {
+      annule = true
+    }
+  }, [user, appliquerFiliale]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = useCallback(async (identifier, password) => {
     const result = await authService.login(identifier, password)
@@ -81,17 +138,23 @@ export function AuthProvider({ children }) {
     if (next) setSession(next)
   }, [])
 
+  const changerMotDePasse = useCallback(async (payload) => {
+    const result = await authService.changerMotDePasse(payload)
+    setSession(authService.getSession())
+    return result
+  }, [])
+
   const logout = useCallback(async () => {
     await authService.logout()
     jetons.setFiliale(null)
-    setFilialeCourante(null)
+    setFilialeCouranteState(null)
+    setFilialesDisponibles([])
     setSession(null)
   }, [])
 
   const changerFiliale = useCallback((filialeId) => {
-    setFilialeCourante(filialeId || null)
-    jetons.setFiliale(filialeId || null)
-  }, [])
+    appliquerFiliale(filialeId || null)
+  }, [appliquerFiliale])
 
   const peut = useCallback(
     (permission) => {
@@ -116,8 +179,10 @@ export function AuthProvider({ children }) {
       verify2FA,
       refresh2FASetup,
       updateUser,
+      changerMotDePasse,
       logout,
       filialeCourante,
+      filialesDisponibles,
       estCompteGroupe,
       perimetre: filialeCourante || user?.filialeId || 'groupe',
       changerFiliale,
@@ -132,8 +197,10 @@ export function AuthProvider({ children }) {
       verify2FA,
       refresh2FASetup,
       updateUser,
+      changerMotDePasse,
       logout,
       filialeCourante,
+      filialesDisponibles,
       estCompteGroupe,
       changerFiliale,
       peut,
