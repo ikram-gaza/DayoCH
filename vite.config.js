@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       host: true,
-      port: 5173,
+      port: 5174,
       proxy: {
         '/api': {
           target: env.API_PROXY_TARGET || 'http://localhost:3000',

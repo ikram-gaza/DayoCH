@@ -1,6 +1,6 @@
 # DayoPI
 
-**Puls Infra** — Application web de gestion du Capital Humain pour le Groupe Dayo.
+**PulseInfra** — Application web de gestion du Capital Humain pour le Groupe Dayo.
 
 ## Stack Technique
 

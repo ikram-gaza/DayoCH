@@ -181,7 +181,7 @@ function TwoFactorPage() {
           </div>
           <div>
             <p style={{ fontWeight: 700, color: 'white', fontSize: 15, fontFamily: 'Lora, Georgia, serif', letterSpacing: '-0.3px' }}>DayoPI</p>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>Puls Infra</p>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', textTransform: 'none', letterSpacing: '0.15em', fontWeight: 600 }}>PulseInfra</p>
           </div>
         </motion.div>
 

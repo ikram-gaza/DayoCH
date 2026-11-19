@@ -5,7 +5,7 @@
 ---
 
 ## Slide 1 — Titre
-**DayoPI — Puls Infra**
+**DayoPI — PulseInfra**
 Plateforme de gestion du Capital Humain · Volet Front-end · Présentation d'avancement
 Nom · Date · Groupe Dayo
 

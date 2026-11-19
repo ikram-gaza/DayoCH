@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Calendar, Package, MessageSquare,
   GraduationCap, BarChart3, Users, Briefcase,
-  ClipboardCheck, Settings, LogOut, Warehouse, User, Contact, BarChart3 as ChartIcon,
+  ClipboardCheck, Settings, LogOut, Warehouse, User, Contact, BarChart3 as ChartIcon, Building2, Layers,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -51,6 +51,8 @@ const menuConfig = {
     { label: 'Gestion du stock', path: '/stock',       icon: Warehouse },
     { label: 'Utilisateurs',    path: '/utilisateurs', icon: Users },
     { label: 'Organigramme',    path: '/organigramme', icon: Briefcase },
+    { label: 'Départements',    path: '/departements', icon: Building2 },
+    { label: 'Services',        path: '/services',     icon: Layers },
     { label: 'Filiales',        path: '/filiales',     icon: LayoutDashboard },
     { label: 'Statistiques',    path: '/statistiques', icon: BarChart3 },
     { label: 'Évaluations',     path: '/evaluations',  icon: ClipboardCheck },
@@ -109,7 +111,7 @@ export default function Sidebar({ onLogout }) {
           </div>
           <div>
             <p style={{ fontWeight: 700, fontSize: 14, color: '#1c1917', fontFamily: 'Lora, Georgia, serif', letterSpacing: '-0.3px' }}>DayoPI</p>
-            <p style={{ fontSize: 10, color: '#a8a29e', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>Puls Infra</p>
+            <p style={{ fontSize: 10, color: '#a8a29e', textTransform: 'none', letterSpacing: '0.15em', fontWeight: 600 }}>PulseInfra</p>
           </div>
         </div>
 

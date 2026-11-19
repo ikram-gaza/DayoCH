@@ -1,11 +1,6 @@
 import { useState } from 'react'
-import { X, UserPlus, UserCog, AlertCircle, ShieldCheck } from 'lucide-react'
-import {
-  utilisateursService,
-  ROLES_UTILISATEUR,
-  STATUTS_UTILISATEUR,
-  FILIALES_UTILISATEUR,
-} from '../../services/utilisateursService'
+import { X, UserPlus, UserCog, AlertCircle } from 'lucide-react'
+import { utilisateursService, STATUTS_UTILISATEUR } from '../../services/utilisateursService'
 
 const inputStyle = {
   width: '100%', boxSizing: 'border-box',
@@ -30,25 +25,34 @@ function blurBorder(e) {
   e.target.style.boxShadow = 'none'
 }
 
-export default function UtilisateurModal({ isOpen, onClose, utilisateur, onSubmit }) {
+export default function UtilisateurModal({
+  isOpen,
+  onClose,
+  utilisateur,
+  onSubmit,
+  utilisateurs = [],
+  roles = [],
+  filiales = [],
+}) {
   const estEdition = Boolean(utilisateur)
+  const rolesOptions = roles.length ? roles : utilisateursService.getRolesDisponibles()
+  const filialesOptions = filiales.length ? filiales : utilisateursService.getFilialesDisponibles()
 
   const [prenom, setPrenom] = useState(utilisateur?.prenom || '')
   const [nom, setNom] = useState(utilisateur?.nom || '')
   const [email, setEmail] = useState(utilisateur?.email || '')
   const [telephone, setTelephone] = useState(utilisateur?.telephone || '')
-  const [role, setRole] = useState(utilisateur?.role || 'employe')
-  const [filiale, setFiliale] = useState(utilisateur?.filiale || FILIALES_UTILISATEUR[1].nom)
-  const [poste, setPoste] = useState(utilisateur?.poste || '')
   const [matricule, setMatricule] = useState(utilisateur?.matricule || '')
-  const [dateEmbauche, setDateEmbauche] = useState(utilisateur?.dateEmbauche || '')
-  const [statut, setStatut] = useState(utilisateur?.statut || 'actif')
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(Boolean(utilisateur?.twoFactorEnabled))
+  const [passwordInitial, setPasswordInitial] = useState('')
+  const [role, setRole] = useState(utilisateur?.role || rolesOptions.find((r) => r.code === 'AGENT')?.code || rolesOptions[rolesOptions.length - 1]?.code || 'AGENT')
+  const [filialeId, setFilialeId] = useState(utilisateur?.filialeId || '')
+  const [statut, setStatut] = useState(utilisateur?.statut || (utilisateur?.actif === false ? 'inactif' : 'actif'))
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   if (!isOpen) return null
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
@@ -57,31 +61,46 @@ export default function UtilisateurModal({ isOpen, onClose, utilisateur, onSubmi
       return
     }
 
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    if (!estEdition && !matricule.trim()) {
+      setError('Le matricule est obligatoire.')
+      return
+    }
+
+    if (!estEdition && !passwordInitial) {
+      setError('Le mot de passe initial est obligatoire.')
+      return
+    }
+
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setError('Veuillez saisir une adresse e-mail valide.')
       return
     }
 
-    if (utilisateursService.emailExiste(email, utilisateur?.id)) {
+    if (utilisateursService.emailExiste(email, utilisateur?.id, utilisateurs)) {
       setError('Cette adresse e-mail est déjà utilisée par un autre collaborateur.')
       return
     }
 
-    onSubmit({
-      prenom,
-      nom,
-      email,
-      telephone,
-      role,
-      filiale,
-      poste,
-      matricule,
-      dateEmbauche,
-      statut,
-      twoFactorEnabled,
-    })
-
-    onClose()
+    setSubmitting(true)
+    try {
+      const payload = {
+        prenom,
+        nom,
+        email,
+        telephone,
+        role,
+        filialeId: filialeId || undefined,
+        statut,
+      }
+      if (!estEdition) {
+        payload.matricule = matricule
+        payload.passwordInitial = passwordInitial
+      }
+      const ok = await onSubmit(payload)
+      if (ok !== false) onClose()
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -90,14 +109,13 @@ export default function UtilisateurModal({ isOpen, onClose, utilisateur, onSubmi
       background: 'rgba(28,25,23,0.5)', backdropFilter: 'blur(4px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 16,
-    }}>
+    }} onClick={onClose}>
       <div style={{
         background: 'white', borderRadius: 20, width: '100%', maxWidth: 640,
         boxShadow: '0 20px 40px rgba(0,0,0,0.18)',
         maxHeight: '90vh', overflowY: 'auto',
         border: '1px solid #e7e5e4',
-      }}>
-        {/* Header */}
+      }} onClick={(e) => e.stopPropagation()}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '20px 24px', borderBottom: '1px solid #f5f5f4',
@@ -108,16 +126,18 @@ export default function UtilisateurModal({ isOpen, onClose, utilisateur, onSubmi
               {estEdition ? 'Modifier le collaborateur' : 'Nouveau collaborateur'}
             </h2>
             <p style={{ fontSize: 13, color: '#78716c', margin: '4px 0 0' }}>
-              {estEdition ? 'Mettez à jour les informations et les accès.' : 'Créez un compte et attribuez un rôle.'}
+              {estEdition ? 'Mettez à jour les informations et les accès.' : 'Créez un compte utilisateur (API).'}
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
             style={{
               width: 32, height: 32, borderRadius: 10, border: 'none',
               background: '#f5f5f4', cursor: 'pointer', display: 'flex',
               alignItems: 'center', justifyContent: 'center', color: '#78716c',
             }}
+            aria-label="Fermer"
           >
             <X size={16} />
           </button>
@@ -135,7 +155,6 @@ export default function UtilisateurModal({ isOpen, onClose, utilisateur, onSubmi
             </div>
           )}
 
-          {/* Identité */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <label htmlFor="prenom" style={labelStyle}>Prénom <span style={{ color: '#dc2626' }}>*</span></label>
@@ -149,10 +168,9 @@ export default function UtilisateurModal({ isOpen, onClose, utilisateur, onSubmi
             </div>
           </div>
 
-          {/* Contact */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
-              <label htmlFor="email" style={labelStyle}>E-mail <span style={{ color: '#dc2626' }}>*</span></label>
+              <label htmlFor="email" style={labelStyle}>E-mail</label>
               <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder="prenom.nom@dayo.africa" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
             </div>
@@ -163,45 +181,69 @@ export default function UtilisateurModal({ isOpen, onClose, utilisateur, onSubmi
             </div>
           </div>
 
-          {/* Affectation */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
+              <label htmlFor="matricule" style={labelStyle}>Matricule {!estEdition && <span style={{ color: '#dc2626' }}>*</span>}</label>
+              <input
+                id="matricule"
+                type="text"
+                value={matricule}
+                onChange={(e) => setMatricule(e.target.value)}
+                placeholder="Ex : SA-0002"
+                disabled={estEdition}
+                style={{ ...inputStyle, background: estEdition ? '#fafaf9' : 'white', color: estEdition ? '#a8a29e' : '#1c1917' }}
+                onFocus={focusBorder}
+                onBlur={blurBorder}
+              />
+            </div>
+            <div>
+              {!estEdition ? (
+                <>
+                  <label htmlFor="passwordInitial" style={labelStyle}>Mot de passe initial <span style={{ color: '#dc2626' }}>*</span></label>
+                  <input
+                    id="passwordInitial"
+                    type="password"
+                    value={passwordInitial}
+                    onChange={(e) => setPasswordInitial(e.target.value)}
+                    placeholder="Mot de passe provisoire"
+                    style={inputStyle}
+                    onFocus={focusBorder}
+                    onBlur={blurBorder}
+                    autoComplete="new-password"
+                  />
+                </>
+              ) : (
+                <>
+                  <label style={labelStyle}>Mot de passe</label>
+                  <div style={{ ...inputStyle, background: '#fafaf9', color: '#78716c', display: 'flex', alignItems: 'center' }}>
+                    Non modifiable ici
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <label htmlFor="role" style={labelStyle}>Rôle <span style={{ color: '#dc2626' }}>*</span></label>
               <select id="role" value={role} onChange={(e) => setRole(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                {Object.entries(ROLES_UTILISATEUR).map(([id, r]) => (
-                  <option key={id} value={id}>{r.label}</option>
+                {rolesOptions.map((r) => (
+                  <option key={r.code} value={r.code}>{r.label || r.code}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label htmlFor="filiale" style={labelStyle}>Filiale <span style={{ color: '#dc2626' }}>*</span></label>
-              <select id="filiale" value={filiale} onChange={(e) => setFiliale(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                {FILIALES_UTILISATEUR.map((f) => (
-                  <option key={f.code} value={f.nom}>{f.nom}</option>
+              <label htmlFor="filialeId" style={labelStyle}>Filiale</label>
+              <select id="filialeId" value={filialeId} onChange={(e) => setFilialeId(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <option value="">Aucune (groupe)</option>
+                {filialesOptions.map((f) => (
+                  <option key={f.id || f.code || f.nom} value={f.id || ''}>{f.nom}{f.code ? ` (${f.code})` : ''}</option>
                 ))}
               </select>
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <label htmlFor="poste" style={labelStyle}>Poste</label>
-              <input id="poste" type="text" value={poste} onChange={(e) => setPoste(e.target.value)}
-                placeholder="Chargé de Clientèle" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
-            <div>
-              <label htmlFor="matricule" style={labelStyle}>Matricule</label>
-              <input id="matricule" type="text" value={matricule} onChange={(e) => setMatricule(e.target.value)}
-                placeholder="Généré automatiquement" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <label htmlFor="dateEmbauche" style={labelStyle}>Date d'embauche</label>
-              <input id="dateEmbauche" type="date" value={dateEmbauche} onChange={(e) => setDateEmbauche(e.target.value)}
-                style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
             <div>
               <label htmlFor="statut" style={labelStyle}>Statut du compte</label>
               <select id="statut" value={statut} onChange={(e) => setStatut(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
@@ -212,41 +254,6 @@ export default function UtilisateurModal({ isOpen, onClose, utilisateur, onSubmi
             </div>
           </div>
 
-          {/* 2FA */}
-          <button
-            type="button"
-            onClick={() => setTwoFactorEnabled((v) => !v)}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-              padding: '12px 14px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
-              border: `1.5px solid ${twoFactorEnabled ? '#007FE1' : '#e7e5e4'}`,
-              background: twoFactorEnabled ? '#F0F8FF' : '#fafaf9',
-            }}
-          >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <ShieldCheck size={18} style={{ color: twoFactorEnabled ? '#007FE1' : '#a8a29e' }} />
-              <span>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#1c1917' }}>
-                  Double authentification (2FA)
-                </span>
-                <span style={{ display: 'block', fontSize: 11, color: '#78716c' }}>
-                  Exiger un code 2FAS à la connexion
-                </span>
-              </span>
-            </span>
-            <span style={{
-              width: 40, height: 22, borderRadius: 999, flexShrink: 0, position: 'relative',
-              background: twoFactorEnabled ? '#007FE1' : '#d6d3d1', transition: 'background 0.15s',
-            }}>
-              <span style={{
-                position: 'absolute', top: 2, left: twoFactorEnabled ? 20 : 2,
-                width: 18, height: 18, borderRadius: '50%', background: 'white',
-                transition: 'left 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              }} />
-            </span>
-          </button>
-
-          {/* Actions */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
             <button
               type="button"
@@ -260,14 +267,16 @@ export default function UtilisateurModal({ isOpen, onClose, utilisateur, onSubmi
             </button>
             <button
               type="submit"
+              disabled={submitting}
               style={{
                 padding: '10px 20px', borderRadius: 12, border: 'none',
-                background: 'linear-gradient(135deg, #007FE1, #0066C0)',
-                color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                background: submitting ? '#93c5fd' : 'linear-gradient(135deg, #007FE1, #0066C0)',
+                color: 'white', fontSize: 13, fontWeight: 700,
+                cursor: submitting ? 'not-allowed' : 'pointer',
                 boxShadow: '0 4px 14px rgba(0,127,225,0.25)',
               }}
             >
-              {estEdition ? 'Enregistrer les modifications' : 'Créer le collaborateur'}
+              {submitting ? 'Enregistrement…' : (estEdition ? 'Enregistrer les modifications' : 'Créer le collaborateur')}
             </button>
           </div>
         </form>

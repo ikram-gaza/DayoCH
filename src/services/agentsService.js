@@ -127,6 +127,28 @@ export const apiAgents = {
     }
   },
 
+  creer: async (corps) => {
+    const { data } = await api.post('/organisation/agents', corps)
+    return data
+  },
+
+  modifier: async (id, corps) => {
+    const { data } = await api.patch(`/organisation/agents/${id}`, corps)
+    return data
+  },
+
+  statistiques: async (filialeId) => lire('/organisation/agents/statistiques', { filialeId }),
+
+  designerGerant: async (id) => {
+    const { data } = await api.patch(`/organisation/agents/${id}/designer-gerant`)
+    return data
+  },
+
+  sortie: async (id) => {
+    const { data } = await api.patch(`/organisation/agents/${id}/sortie`)
+    return data
+  },
+
   agentsPourTrombinoscope: async (filtres = {}) => {
     const actif = filtres.actif === 'all' ? null : filtres.actif
     const data = await lire('/organisation/trombinoscope', { ...filtres, actif })

@@ -11,7 +11,7 @@ import ExportButtons from '../../components/common/ExportButtons'
 import CarteAgent from '../../components/trombinoscope/CarteAgent'
 
 export default function TrombinoscopePage() {
-  const { estCompteGroupe, perimetre, peut } = useAuth()
+  const { estCompteGroupe, filialeCourante, perimetre, peut } = useAuth()
   const { filtres, definir } = useFiltresUrl({ actif: 'true' })
   const [saisie, setSaisie] = useState(filtres.recherche || '')
   const rechercheRetardee = useDebounce(saisie, 350)
@@ -37,6 +37,7 @@ export default function TrombinoscopePage() {
           </h1>
           <p style={{ fontSize: 13, color: '#78716c', margin: '4px 0 0' }}>
             {requete.data ? `${effectifTotal} agent(s) · ${filiales} filiale(s).` : 'Annuaire illustré des filiales et des équipes.'}
+            {estCompteGroupe && !filialeCourante ? ' Recherche possible dans toutes les filiales (vue groupe).' : ''}
           </p>
         </div>
         <ExportButtons
@@ -47,14 +48,14 @@ export default function TrombinoscopePage() {
 
       <div style={{ background: 'white', borderRadius: 14, padding: '14px 18px', border: '1px solid #e7e5e4', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <label style={{ flex: '1 1 260px', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12, fontWeight: 600, color: '#57534e' }}>
-          Rechercher
+          Rechercher (nom, prénom, matricule, fonction)
           <span style={{ position: 'relative' }}>
             <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#a8a29e' }} />
             <input
               type="search"
               value={saisie}
               onChange={(e) => setSaisie(e.target.value)}
-              placeholder="Nom, matricule, fonction"
+              placeholder="Ex : Ben, Awa, SA-0001…"
               style={{ width: '100%', boxSizing: 'border-box', height: 36, padding: '0 10px 0 32px', borderRadius: 10, border: '1px solid #e7e5e4', background: 'white', fontSize: 13, outline: 'none' }}
             />
           </span>
@@ -89,7 +90,9 @@ export default function TrombinoscopePage() {
             <Contact size={24} />
           </span>
           <p style={{ fontSize: 15, fontWeight: 700, color: '#1c1917', margin: 0 }}>Aucun agent ne correspond</p>
-          <p style={{ fontSize: 13, color: '#78716c', margin: '4px 0 0' }}>Élargissez la recherche ou retirez un filtre.</p>
+          <p style={{ fontSize: 13, color: '#78716c', margin: '4px 0 0' }}>
+            {estCompteGroupe && filialeCourante ? 'Vous êtes en vue d’une filiale ; passez en « Groupe (toutes filiales) » pour chercher dans tout le groupe.' : 'Élargissez la recherche ou retirez un filtre.'}
+          </p>
         </div>
       )}
 

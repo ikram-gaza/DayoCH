@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { ArrowLeft, Image as ImageIcon, PenLine, UserRound } from 'lucide-react'
+import { ArrowLeft, Crown, Image as ImageIcon, Pencil, PenLine, Save, UserMinus, UserRound, X, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useAgent, useCarriere, useEnvoyerPhoto, useInvalidationAgent, useReferentielsAgents } from '../../hooks/useAgents'
 import { useImageProtegee } from '../../hooks/useImageProtegee'
@@ -19,8 +19,17 @@ export default function AgentDetailPage() {
   const { peut } = useAuth()
   const agent = useAgent(id)
   const carriere = useCarriere(id)
+  const referentiels = useReferentielsAgents()
+  const invalider = useInvalidationAgent(id)
   const [signatureOuverte, setSignatureOuverte] = useState(false)
+  const [editionOuverte, setEditionOuverte] = useState(false)
+  const [feedback, setFeedback] = useState(null)
   const peutModifier = peut('agent:update')
+
+  const notifier = (type, message) => {
+    setFeedback({ type, message })
+    setTimeout(() => setFeedback(null), 3500)
+  }
 
   if (agent.isLoading) {
     return <div style={{ display: 'grid', placeItems: 'center', padding: 48 }}><Spinner /></div>
@@ -38,8 +47,37 @@ export default function AgentDetailPage() {
 
   const fiche = agent.data
 
+  const handleDesignerGerant = async () => {
+    if (!window.confirm(`Désigner ${fiche.prenom || ''} ${fiche.nom || ''} comme gérant ? L’ancien gérant perdra le pouvoir de validation.`)) return
+    try {
+      await apiAgents.designerGerant(id)
+      await invalider()
+      notifier('succes', 'Agent désigné comme gérant.')
+    } catch (e) {
+      notifier('erreur', normaliserErreur(e).message)
+    }
+  }
+
+  const handleSortie = async () => {
+    if (!window.confirm(`Enregistrer la sortie d’effectif de ${fiche.prenom || ''} ${fiche.nom || ''} ? L’agent et son compte seront désactivés.`)) return
+    try {
+      await apiAgents.sortie(id)
+      await invalider()
+      notifier('succes', 'Sortie d’effectif enregistrée.')
+    } catch (e) {
+      notifier('erreur', normaliserErreur(e).message)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {feedback && (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 100, background: '#1c1917', color: 'white', padding: '12px 20px', borderRadius: 14, fontSize: 13, fontWeight: 600, boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', gap: 10, maxWidth: 420 }}>
+          {feedback.type === 'erreur' ? <AlertCircle size={16} style={{ color: '#f87171', flexShrink: 0 }} /> : <CheckCircle2 size={16} style={{ color: '#22c55e', flexShrink: 0 }} />}
+          <span>{feedback.message}</span>
+        </div>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1c1917', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -53,13 +91,39 @@ export default function AgentDetailPage() {
             {!fiche.email && <Badge tone="stone">Sans email</Badge>}
           </p>
         </div>
-        <Link
-          to="/agents"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 12, border: '1px solid #e7e5e4', background: 'white', color: '#57534e', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
-        >
-          <ArrowLeft size={15} /> Retour à la liste
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Link
+            to="/agents"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 12, border: '1px solid #e7e5e4', background: 'white', color: '#57534e', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+          >
+            <ArrowLeft size={15} /> Retour
+          </Link>
+          {peutModifier && (
+            <>
+              <button type="button" onClick={() => setEditionOuverte((o) => !o)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 12, border: '1px solid #e7e5e4', background: editionOuverte ? '#f5f5f4' : 'white', color: '#57534e', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                {editionOuverte ? <X size={15} /> : <Pencil size={15} />} {editionOuverte ? 'Fermer' : 'Modifier'}
+              </button>
+              <button type="button" onClick={handleDesignerGerant} disabled={fiche.estGerant} title={fiche.estGerant ? 'Déjà gérant' : ''} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 12, border: '1px solid #fde68a', background: '#fffbeb', color: '#92400e', fontSize: 13, fontWeight: 600, cursor: fiche.estGerant ? 'not-allowed' : 'pointer', opacity: fiche.estGerant ? 0.6 : 1 }}>
+                <Crown size={15} /> Désigner gérant
+              </button>
+              <button type="button" onClick={handleSortie} disabled={!fiche.actif} title={!fiche.actif ? 'Agent déjà sorti' : ''} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 12, border: '1px solid #fecaca', background: '#FEF2F1', color: '#b91c1c', fontSize: 13, fontWeight: 600, cursor: !fiche.actif ? 'not-allowed' : 'pointer', opacity: !fiche.actif ? 0.6 : 1 }}>
+                <UserMinus size={15} /> Sortie d’effectif
+              </button>
+            </>
+          )}
+        </div>
       </div>
+
+      {editionOuverte && peutModifier && (
+        <ModifierAgent
+          key={fiche.id + (fiche.updatedAt || '')}
+          agent={fiche}
+          referentiels={referentiels.data || { departements: [], services: [] }}
+          onFermer={() => setEditionOuverte(false)}
+          onSucces={async () => { await invalider(); setEditionOuverte(false); notifier('succes', 'Informations mises à jour.') }}
+          onErreur={(msg) => notifier('erreur', msg)}
+        />
+      )}
 
       <section style={{ background: 'white', border: '1px solid #e7e5e4', borderRadius: 16, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 24 }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
@@ -80,8 +144,9 @@ export default function AgentDetailPage() {
           <Donnee libelle="Email" valeur={fiche.email} />
           <Donnee libelle="Téléphone" valeur={fiche.telephone} />
           <Donnee libelle="Date d'embauche" valeur={formaterDate(fiche.dateEmbauche)} />
+          <Donnee libelle="Date de sortie" valeur={formaterDate(fiche.dateSortie)} />
           <Donnee libelle="Compte de connexion" valeur={fiche.userId ? 'Oui' : 'Non (connexion impossible)'} />
-          <Donnee libelle="Filiale" valeur={fiche.filiale} />
+          <Donnee libelle="Filiale" valeur={fiche.filiale?.nom || fiche.filiale} />
         </dl>
       </section>
 
@@ -206,6 +271,121 @@ function TeleverserPhoto({ agentId, majAt }) {
       </span>
       {erreur && <span style={{ fontSize: 11, color: '#b91c1c' }}>{erreur}</span>}
     </div>
+  )
+}
+
+function valeurDate(d) {
+  if (!d) return ''
+  const s = String(d)
+  return s.length >= 10 ? s.slice(0, 10) : s
+}
+
+function ModifierAgent({ agent, referentiels, onFermer, onSucces, onErreur }) {
+  const [form, setForm] = useState({
+    nom: agent.nom || '',
+    prenom: agent.prenom || '',
+    email: agent.email || '',
+    telephone: agent.telephone || '',
+    fonction: agent.fonction || '',
+    dateEmbauche: valeurDate(agent.dateEmbauche),
+    dateSortie: valeurDate(agent.dateSortie),
+    departementId: agent.departement?.id || '',
+    serviceId: agent.service?.id || '',
+    estGerant: Boolean(agent.estGerant),
+    actif: agent.actif !== false,
+  })
+  const [envoi, setEnvoi] = useState(false)
+
+  const services = useMemo(
+    () => (referentiels.services || []).filter((s) => !form.departementId || s.departementId === form.departementId),
+    [referentiels.services, form.departementId],
+  )
+
+  useEffect(() => {
+    if (form.serviceId && !services.some((s) => s.id === form.serviceId)) {
+      setForm((f) => ({ ...f, serviceId: '' }))
+    }
+  }, [services, form.serviceId])
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!form.nom.trim() || !form.prenom.trim()) {
+      onErreur('Nom et prénom sont obligatoires.')
+      return
+    }
+    const corps = {
+      nom: form.nom.trim(),
+      prenom: form.prenom.trim(),
+      email: form.email.trim() || undefined,
+      telephone: form.telephone.trim() || undefined,
+      fonction: form.fonction.trim() || undefined,
+      dateEmbauche: form.dateEmbauche || undefined,
+      dateSortie: form.dateSortie || null,
+      departementId: form.departementId || undefined,
+      serviceId: form.serviceId || undefined,
+      estGerant: form.estGerant,
+      actif: form.actif,
+    }
+    // éviter d'envoyer undefined inutiles sauf champs nullable explicites
+    Object.keys(corps).forEach((k) => { if (corps[k] === undefined) delete corps[k] })
+    setEnvoi(true)
+    try {
+      await apiAgents.modifier(agent.id, corps)
+      await onSucces()
+    } catch (err) {
+      onErreur(normaliserErreur(err).message)
+    } finally {
+      setEnvoi(false)
+    }
+  }
+
+  return (
+    <section style={{ background: 'white', border: '1px solid #e7e5e4', borderRadius: 16, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1c1917' }}>Modifier les informations</h2>
+          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#78716c' }}>Mise à jour de la fiche agent (hors mutation tracée).</p>
+        </div>
+        <button type="button" onClick={onFermer} style={{ width: 32, height: 32, borderRadius: 10, border: '1px solid #e7e5e4', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#78716c' }} aria-label="Fermer"><X size={15} /></button>
+      </div>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+          <Champ label="Prénom"><input value={form.prenom} onChange={(e) => setForm((f) => ({ ...f, prenom: e.target.value }))} style={styleSelect} /></Champ>
+          <Champ label="Nom"><input value={form.nom} onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))} style={styleSelect} /></Champ>
+          <Champ label="E-mail"><input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} style={styleSelect} /></Champ>
+          <Champ label="Téléphone"><input value={form.telephone} onChange={(e) => setForm((f) => ({ ...f, telephone: e.target.value }))} style={styleSelect} /></Champ>
+          <Champ label="Fonction"><input value={form.fonction} onChange={(e) => setForm((f) => ({ ...f, fonction: e.target.value }))} style={styleSelect} /></Champ>
+          <Champ label="Date d'embauche"><input type="date" value={form.dateEmbauche} onChange={(e) => setForm((f) => ({ ...f, dateEmbauche: e.target.value }))} style={styleSelect} /></Champ>
+          <Champ label="Date de sortie"><input type="date" value={form.dateSortie} onChange={(e) => setForm((f) => ({ ...f, dateSortie: e.target.value }))} style={styleSelect} /></Champ>
+          <Champ label="Département">
+            <select value={form.departementId} onChange={(e) => setForm((f) => ({ ...f, departementId: e.target.value, serviceId: '' }))} style={styleSelect}>
+              <option value="">Aucun</option>
+              {(referentiels.departements || []).map((d) => <option key={d.id} value={d.id}>{d.nom}</option>)}
+            </select>
+          </Champ>
+          <Champ label="Service">
+            <select value={form.serviceId} onChange={(e) => setForm((f) => ({ ...f, serviceId: e.target.value }))} style={styleSelect}>
+              <option value="">Aucun</option>
+              {services.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
+            </select>
+          </Champ>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'center' }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#44403c', fontWeight: 600, cursor: 'pointer' }}>
+            <input type="checkbox" checked={form.estGerant} onChange={(e) => setForm((f) => ({ ...f, estGerant: e.target.checked }))} style={{ width: 16, height: 16, accentColor: '#007FE1' }} /> Gérant
+          </label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#44403c', fontWeight: 600, cursor: 'pointer' }}>
+            <input type="checkbox" checked={form.actif} onChange={(e) => setForm((f) => ({ ...f, actif: e.target.checked }))} style={{ width: 16, height: 16, accentColor: '#007FE1' }} /> Actif
+          </label>
+        </div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onFermer} style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid #e7e5e4', background: 'white', color: '#57534e', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+          <button type="submit" disabled={envoi} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 10, border: 'none', background: envoi ? '#93c5fd' : '#007FE1', color: 'white', fontSize: 13, fontWeight: 700, cursor: envoi ? 'not-allowed' : 'pointer' }}>
+            <Save size={15} /> {envoi ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
+        </div>
+      </form>
+    </section>
   )
 }
 

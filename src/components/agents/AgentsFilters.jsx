@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { FilterX, Search } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useReferentielsAgents } from '../../hooks/useAgents'
 
 export default function AgentsFilters({ filtres, definir, reinitialiser }) {
+  const { estCompteGroupe, filialesDisponibles } = useAuth()
   const [recherche, setRecherche] = useState(filtres.recherche || '')
   const rechercheRetardee = useDebounce(recherche, 350)
   const referentiels = useReferentielsAgents()
@@ -27,18 +29,29 @@ export default function AgentsFilters({ filtres, definir, reinitialiser }) {
     <section style={{ background: 'white', border: '1px solid #e7e5e4', borderRadius: 14, padding: '14px 18px' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, alignItems: 'end' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12, fontWeight: 600, color: '#57534e' }}>
-          Recherche
+          Recherche (nom, prénom, matricule, fonction)
           <span style={{ position: 'relative' }}>
             <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#a8a29e' }} />
             <input
               type="search"
               value={recherche}
               onChange={(evenement) => setRecherche(evenement.target.value)}
-              placeholder="Matricule, nom, fonction…"
+              placeholder="Ex : Ben, Kouassi, SA-0001…"
               style={{ ...styleInput, paddingLeft: 32 }}
             />
           </span>
         </label>
+
+        {estCompteGroupe && (
+          <Champ label="Filiale">
+            <select value={filtres.filialeId || ''} onChange={(e) => definir('filialeId', e.target.value || null)} style={styleInput}>
+              <option value="">Toutes les filiales</option>
+              {(filialesDisponibles || []).map((f) => (
+                <option key={f.id} value={f.id}>{f.nom}{f.code ? ` (${f.code})` : ''}</option>
+              ))}
+            </select>
+          </Champ>
+        )}
 
         <Champ label="Département">
           <select value={filtres.departementIds || ''} onChange={(e) => { definir('departementIds', e.target.value || null); definir('serviceIds', null) }} style={styleInput}>

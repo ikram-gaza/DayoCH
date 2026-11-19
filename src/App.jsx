@@ -4,6 +4,9 @@ import TwoFactorPage from './pages/auth/TwoFactorPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
 import OrganigrammePage from './pages/admin/OrganigrammePage'
 import FilialesPage from './pages/admin/FilialesPage'
+import FilialeDetailPage from './pages/admin/FilialeDetailPage'
+import DepartementsPage from './pages/admin/DepartementsPage'
+import ServicesPage from './pages/admin/ServicesPage'
 import UtilisateursPage from './pages/admin/UtilisateursPage'
 import ProfilPage from './pages/profil/ProfilPage'
 import CongesPage from './pages/conges/CongesPage'
@@ -99,6 +102,9 @@ function App() {
             <Route path="profil" element={<RoleRoute roles={ALL_ROLES}><ProfilPage /></RoleRoute>} />
             <Route path="organigramme" element={<PermissionRoute permission={PERMISSIONS.ORGANIGRAMME_READ}><OrganigrammePage /></PermissionRoute>} />
             <Route path="filiales" element={<RoleRoute roles={ADMIN_ROLES}><FilialesPage /></RoleRoute>} />
+            <Route path="filiales/:id" element={<RoleRoute roles={ADMIN_ROLES}><FilialeDetailPage /></RoleRoute>} />
+            <Route path="departements" element={<RoleRoute roles={ADMIN_ROLES}><DepartementsPage /></RoleRoute>} />
+            <Route path="services" element={<RoleRoute roles={ADMIN_ROLES}><ServicesPage /></RoleRoute>} />
 
             {/* TODO: Routes à implémenter */}
             <Route path="formations" element={<RoleRoute roles={STAFF_ROLES}><div className="p-6">Module Formations (à venir)</div></RoleRoute>} />

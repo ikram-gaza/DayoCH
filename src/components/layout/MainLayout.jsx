@@ -19,7 +19,7 @@ export default function MainLayout() {
       {/* Zone contenu : marge gauche exactement égale à la largeur de la sidebar */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: 256, minWidth: 0 }}>
         <Header />
-        <main style={{ flex: 1, width: '100%', maxWidth: 1100, margin: '0 auto', padding: '32px 40px' }}>
+        <main style={{ flex: 1, width: '100%', margin: '0 auto', padding: '32px 40px' }}>
           <Outlet />
         </main>
       </div>

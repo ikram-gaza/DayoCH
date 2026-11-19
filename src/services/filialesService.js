@@ -24,9 +24,20 @@ function couleurPour(codeOuIndex) {
   return COULEURS[somme % COULEURS.length]
 }
 
+function texte(valeur) {
+  if (valeur === undefined || valeur === null) return undefined
+  const t = String(valeur).trim()
+  return t ? t : undefined
+}
+
 export function normaliserFiliale(brut = {}, index = 0) {
   const code = brut.code || ''
   const config = FILIALES.find((f) => f.code === code || f.id === brut.id || f.nom === brut.nom)
+  const identifiants =
+    brut.identifiants && typeof brut.identifiants === 'object' && !Array.isArray(brut.identifiants)
+      ? brut.identifiants
+      : null
+
   return {
     ...brut,
     id: brut.id ?? brut._id ?? config?.id ?? code ?? `filiale-${index}`,
@@ -40,38 +51,109 @@ export function normaliserFiliale(brut = {}, index = 0) {
     raisonSociale: brut.raisonSociale || '',
     devise: brut.devise || '',
     timezone: brut.timezone || '',
+    identifiants,
     parentId: brut.parentId ?? null,
     actif: brut.actif !== false,
-    dateOuverture: brut.dateOuverture || brut.dateCreation || config?.dateOuverture || '',
+    dateOuverture: brut.dateOuverture || brut.dateCreation || brut.createdAt || config?.dateOuverture || '',
     couleur: brut.couleur || config?.couleur || couleurPour(code || index),
   }
 }
 
+export function parametresFiliales(filtres = {}) {
+  const p = {}
+
+  const q = texte(filtres.q)
+  const recherche = texte(filtres.recherche)
+  const devise = texte(filtres.devise)
+  const parentId = texte(filtres.parentId)
+  const sortOrder = texte(filtres.sortOrder)
+
+  if (q) p.q = q
+  if (recherche) p.recherche = recherche
+  if (devise) p.devise = devise
+  if (parentId) p.parentId = parentId
+  if (sortOrder) p.sortOrder = sortOrder
+
+  const paysBrut = filtres.pays
+  const pays = Array.isArray(paysBrut)
+    ? paysBrut.map((v) => texte(v)).filter(Boolean)
+    : texte(paysBrut)
+      ? String(paysBrut).split(',').map((v) => v.trim()).filter(Boolean)
+      : []
+  if (pays.length) p.pays = pays
+
+  if (filtres.actif === true || filtres.actif === 'true') p.actif = true
+  else if (filtres.actif === false || filtres.actif === 'false') p.actif = false
+
+  if (filtres.racinesSeulement === true || filtres.racinesSeulement === 'true') p.racinesSeulement = true
+  else if (filtres.racinesSeulement === false || filtres.racinesSeulement === 'false') p.racinesSeulement = false
+
+  return p
+}
+
 function payload(data) {
   const p = {
-    code: data.code?.trim().toUpperCase(),
-    nom: data.nom?.trim(),
-    pays: data.pays?.trim(),
-    ville: data.ville?.trim() || undefined,
-    adresse: data.adresse?.trim() || undefined,
-    telephone: data.telephone?.trim() || undefined,
-    email: data.email?.trim() || undefined,
-    raisonSociale: data.raisonSociale?.trim() || undefined,
-    devise: data.devise?.trim() || undefined,
-    timezone: data.timezone?.trim() || undefined,
-    parentId: data.parentId || undefined,
+    code: texte(data.code)?.toUpperCase(),
+    nom: texte(data.nom),
+    pays: texte(data.pays),
+    ville: texte(data.ville),
+    adresse: texte(data.adresse),
+    telephone: texte(data.telephone),
+    email: texte(data.email),
+    raisonSociale: texte(data.raisonSociale),
+    devise: texte(data.devise),
+    timezone: texte(data.timezone),
+    parentId: texte(data.parentId),
     actif: data.actif !== false,
   }
-  Object.keys(p).forEach((k) => { if (p[k] === undefined || p[k] === '') delete p[k] })
+
+  if (data.identifiants && typeof data.identifiants === 'object' && !Array.isArray(data.identifiants) && Object.keys(data.identifiants).length > 0) {
+    p.identifiants = data.identifiants
+  }
+
+  Object.keys(p).forEach((k) => {
+    if (p[k] === undefined) delete p[k]
+  })
   return p
+}
+
+function nomFichierDepuisEnTete(enTete) {
+  if (!enTete) return null
+  const correspondance = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(enTete)
+  return correspondance?.[1] ? decodeURIComponent(correspondance[1]) : null
 }
 
 export const filialesService = {
   isMock: false,
 
-  lister: async () => {
-    const { data } = await api.get('/filiales', { params: { sortBy: 'code', sortOrder: 'ASC', limit: 100 } })
+  lister: async (filtres = {}) => {
+    const { data } = await api.get('/filiales', {
+      params: { sortOrder: 'ASC', ...parametresFiliales(filtres) },
+      paramsSerializer: { indexes: null },
+    })
     return extraireListe(data).map((f, i) => normaliserFiliale(f, i))
+  },
+
+  detail: async (id) => {
+    const { data } = await api.get(`/filiales/${id}`)
+    return normaliserFiliale(extraireObjet(data))
+  },
+
+  exporter: async (filtres = {}, format = 'xlsx') => {
+    const reponse = await api.get('/filiales/export', {
+      params: { sortOrder: 'ASC', ...parametresFiliales(filtres), format },
+      paramsSerializer: { indexes: null },
+      responseType: 'blob',
+    })
+
+    const url = URL.createObjectURL(reponse.data)
+    const lien = document.createElement('a')
+    lien.href = url
+    lien.download = nomFichierDepuisEnTete(reponse.headers?.['content-disposition']) || `filiales.${format}`
+    document.body.appendChild(lien)
+    lien.click()
+    lien.remove()
+    URL.revokeObjectURL(url)
   },
 
   creer: async (data) => {

@@ -1,6 +1,6 @@
 # Récapitulatif Projet DayoPI — Volet Front-end
 
-> **Puls Infra** — Application web de gestion du Capital Humain du Groupe Dayo.
+> **PulseInfra** — Application web de gestion du Capital Humain du Groupe Dayo.
 > Document de synthèse pour la présentation au responsable backend.
 
 ## 1. Contexte & stack technique
