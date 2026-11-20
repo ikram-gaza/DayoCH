@@ -6,6 +6,8 @@ import {
   CheckCircle2, AlertCircle, Plus, GitBranch,
 } from 'lucide-react'
 import { filialesService, messageErreurFiliale } from '../../services/filialesService'
+import { departementsService, messageErreurDepartement } from '../../services/departementsService'
+import { servicesService, messageErreurService } from '../../services/servicesService'
 import { apiAgents } from '../../services/agentsService'
 import { normaliserErreur } from '../../services/apiClient'
 import { formaterDate } from '../../utils/format'
@@ -44,16 +46,30 @@ function CarteSection({ titre, icon: Icon, accent, children, action }) {
   )
 }
 
+function LienAction({ to, children }) {
+  return (
+    <Link to={to} style={{ fontSize: 12, color: '#007FE1', fontWeight: 700, textDecoration: 'none' }}>
+      {children}
+    </Link>
+  )
+}
+
 export default function FilialeDetailPage() {
   const { id } = useParams()
   const [filiale, setFiliale] = useState(null)
   const [toutesFiliales, setToutesFiliales] = useState([])
   const [agents, setAgents] = useState([])
   const [totalAgents, setTotalAgents] = useState(0)
+  const [departements, setDepartements] = useState([])
+  const [totalDepartements, setTotalDepartements] = useState(0)
+  const [services, setServices] = useState([])
+  const [totalServices, setTotalServices] = useState(0)
   const [chargement, setChargement] = useState(true)
   const [chargementAgents, setChargementAgents] = useState(true)
+  const [chargementOrganisation, setChargementOrganisation] = useState(true)
   const [erreur, setErreur] = useState('')
   const [erreurAgents, setErreurAgents] = useState('')
+  const [erreurOrganisation, setErreurOrganisation] = useState('')
   const [toast, setToast] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [showModalAgence, setShowModalAgence] = useState(false)
@@ -96,8 +112,58 @@ export default function FilialeDetailPage() {
     }
   }
 
+  const chargerOrganisation = async () => {
+    setChargementOrganisation(true)
+    setErreurOrganisation('')
+    try {
+      const [deps, servs] = await Promise.all([
+        departementsService.lister({ filialeId: id, page: '1', limit: '100', sortOrder: 'ASC', avecEffectifs: 'true' }).catch((e) => { throw { source: 'departements', erreur: e } }),
+        servicesService.lister({ filialeId: id, page: '1', limit: '100', sortOrder: 'ASC' }).catch((e) => { throw { source: 'services', erreur: e } }),
+      ])
+      let depItems = Array.isArray(deps?.items) ? deps.items : []
+      let servItems = Array.isArray(servs?.items) ? servs.items : []
+      depItems = depItems.filter((d) => !d.filialeId || String(d.filialeId) === String(id))
+      servItems = servItems.filter((s) => !s.filialeId || String(s.filialeId) === String(id))
+      setDepartements(depItems)
+      setTotalDepartements(depItems.length || deps?.total || 0)
+      setServices(servItems)
+      setTotalServices(servItems.length || servs?.total || 0)
+    } catch (e) {
+      if (e?.source === 'departements') {
+        setErreurOrganisation(messageErreurDepartement(e.erreur))
+        setDepartements([]); setTotalDepartements(0)
+        try {
+          const servs = await servicesService.lister({ filialeId: id, page: '1', limit: '100', sortOrder: 'ASC' })
+          let servItems = Array.isArray(servs?.items) ? servs.items : []
+          servItems = servItems.filter((s) => !s.filialeId || String(s.filialeId) === String(id))
+          setServices(servItems); setTotalServices(servItems.length || servs?.total || 0)
+        } catch (e2) {
+          setErreurOrganisation(`${messageErreurDepartement(e.erreur)} ${messageErreurService(e2)}`)
+          setServices([]); setTotalServices(0)
+        }
+      } else if (e?.source === 'services') {
+        setErreurOrganisation(messageErreurService(e.erreur))
+        setServices([]); setTotalServices(0)
+        try {
+          const deps = await departementsService.lister({ filialeId: id, page: '1', limit: '100', sortOrder: 'ASC', avecEffectifs: 'true' })
+          let depItems = Array.isArray(deps?.items) ? deps.items : []
+          depItems = depItems.filter((d) => !d.filialeId || String(d.filialeId) === String(id))
+          setDepartements(depItems); setTotalDepartements(depItems.length || deps?.total || 0)
+        } catch (e2) {
+          setErreurOrganisation(`${messageErreurService(e.erreur)} ${messageErreurDepartement(e2)}`)
+          setDepartements([]); setTotalDepartements(0)
+        }
+      } else {
+        setErreurOrganisation(messageErreurDepartement(e) || messageErreurService(e))
+      }
+    } finally {
+      setChargementOrganisation(false)
+    }
+  }
+
   useEffect(() => { charger() }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { chargerAgents() }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { chargerOrganisation() }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const parent = useMemo(() => {
     if (!filiale?.parentId) return null
@@ -201,12 +267,14 @@ export default function FilialeDetailPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
         {[
           { label: 'Collaborateurs', value: nbCollabAffiche ?? '—', icon: Users },
+          { label: 'Départements', value: chargementOrganisation ? '…' : (totalDepartements || departements.length || 0), icon: Building2 },
+          { label: 'Services', value: chargementOrganisation ? '…' : (totalServices || services.length || 0), icon: Layers },
+          { label: 'Agences', value: agences.length, icon: GitBranch },
           { label: 'Devise', value: filiale.devise || '—', icon: Wallet },
           { label: 'Fuseau horaire', value: filiale.timezone || '—', icon: Clock },
-          { label: 'Statut', value: filiale.actif ? 'Active' : 'Archivée', icon: Building2 },
         ].map((item) => (
           <div key={item.label} style={{ background: 'white', borderRadius: 14, padding: '14px 16px', border: '1px solid #e7e5e4', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -240,6 +308,116 @@ export default function FilialeDetailPage() {
           </div>
         </CarteSection>
       </div>
+
+      <CarteSection
+        titre="Départements de la filiale"
+        icon={Building2}
+        accent={accent}
+        action={(
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: '#78716c', fontWeight: 600 }}>{chargementOrganisation ? 'Chargement…' : `${totalDepartements || departements.length} département(s)`}</span>
+            <LienAction to={`/departements?filialeId=${id}`}>Gérer</LienAction>
+          </span>
+        )}
+      >
+        {erreurOrganisation && !departements.length && (
+          <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#FEF2F1', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertCircle size={15} /> {erreurOrganisation}
+          </div>
+        )}
+        {chargementOrganisation ? (
+          <div style={{ display: 'grid', placeItems: 'center', padding: 24 }}><Spinner /></div>
+        ) : departements.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 13, color: '#78716c' }}>Aucun département rattaché à cette filiale. <LienAction to={`/departements?filialeId=${id}`}>Voir / créer</LienAction></p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#fafaf9', borderBottom: '1px solid #f5f5f4' }}>
+                  {['Code', 'Nom', 'Responsable', 'Effectif', 'Statut', 'Liens'].map((h) => (
+                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {departements.slice(0, 20).map((dep, index) => (
+                  <tr key={dep.id || dep.code || index} style={{ borderBottom: index < Math.min(departements.length, 20) - 1 ? '1px solid #f5f5f4' : 'none' }}>
+                    <td style={{ padding: '10px 14px', fontWeight: 700, color: accent }}>{dep.code || '—'}</td>
+                    <td style={{ padding: '10px 14px', color: '#1c1917', fontWeight: 600 }}>{dep.nom || '—'}</td>
+                    <td style={{ padding: '10px 14px', color: '#57534e' }}>{dep.responsableNom || '—'}</td>
+                    <td style={{ padding: '10px 14px', color: '#57534e' }}>{dep.effectif ?? '—'}</td>
+                    <td style={{ padding: '10px 14px' }}><Badge tone={dep.actif !== false ? 'green' : 'stone'}>{dep.actif !== false ? 'Actif' : 'Inactif'}</Badge></td>
+                    <td style={{ padding: '10px 14px' }}>
+                      <span style={{ display: 'inline-flex', gap: 10, flexWrap: 'wrap' }}>
+                        {dep.id && <LienAction to={`/agents?filialeId=${id}&departementIds=${dep.id}`}>Agents</LienAction>}
+                        {dep.id && <LienAction to={`/services?filialeId=${id}&departementId=${dep.id}`}>Services</LienAction>}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {departements.length > 20 && (
+              <p style={{ margin: '10px 14px 0', fontSize: 12, color: '#78716c' }}>
+                Affichage des 20 premiers départements sur {departements.length}. <LienAction to={`/departements?filialeId=${id}`}>Voir tous</LienAction>
+              </p>
+            )}
+          </div>
+        )}
+      </CarteSection>
+
+      <CarteSection
+        titre="Services de la filiale"
+        icon={Layers}
+        accent={accent}
+        action={(
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: '#78716c', fontWeight: 600 }}>{chargementOrganisation ? 'Chargement…' : `${totalServices || services.length} service(s)`}</span>
+            <LienAction to={`/services?filialeId=${id}`}>Gérer</LienAction>
+          </span>
+        )}
+      >
+        {erreurOrganisation && !services.length && !departements.length && null}
+        {chargementOrganisation ? (
+          <div style={{ display: 'grid', placeItems: 'center', padding: 24 }}><Spinner /></div>
+        ) : services.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 13, color: '#78716c' }}>Aucun service rattaché à cette filiale. <LienAction to={`/services?filialeId=${id}`}>Voir / créer</LienAction></p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#fafaf9', borderBottom: '1px solid #f5f5f4' }}>
+                  {['Code', 'Nom', 'Département', 'Responsable', 'Effectif', 'Statut', 'Liens'].map((h) => (
+                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {services.slice(0, 20).map((s, index) => (
+                  <tr key={s.id || s.code || index} style={{ borderBottom: index < Math.min(services.length, 20) - 1 ? '1px solid #f5f5f4' : 'none' }}>
+                    <td style={{ padding: '10px 14px', fontWeight: 700, color: accent }}>{s.code || '—'}</td>
+                    <td style={{ padding: '10px 14px', color: '#1c1917', fontWeight: 600 }}>{s.nom || '—'}</td>
+                    <td style={{ padding: '10px 14px', color: '#57534e' }}>{s.departementNom || '—'}</td>
+                    <td style={{ padding: '10px 14px', color: '#57534e' }}>{s.responsableNom || '—'}</td>
+                    <td style={{ padding: '10px 14px', color: '#57534e' }}>{s.effectif ?? '—'}</td>
+                    <td style={{ padding: '10px 14px' }}><Badge tone={s.actif !== false ? 'green' : 'stone'}>{s.actif !== false ? 'Actif' : 'Inactif'}</Badge></td>
+                    <td style={{ padding: '10px 14px' }}>
+                      <span style={{ display: 'inline-flex', gap: 10, flexWrap: 'wrap' }}>
+                        {s.id && <LienAction to={`/agents?filialeId=${id}&serviceIds=${s.id}${s.departementId ? `&departementIds=${s.departementId}` : ''}`}>Agents</LienAction>}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {services.length > 20 && (
+              <p style={{ margin: '10px 14px 0', fontSize: 12, color: '#78716c' }}>
+                Affichage des 20 premiers services sur {services.length}. <LienAction to={`/services?filialeId=${id}`}>Voir tous</LienAction>
+              </p>
+            )}
+          </div>
+        )}
+      </CarteSection>
 
       <CarteSection
         titre="Agences / sous-filiales"
@@ -288,7 +466,12 @@ export default function FilialeDetailPage() {
         titre="Agents de la filiale"
         icon={Users}
         accent={accent}
-        action={<span style={{ fontSize: 12, color: '#78716c', fontWeight: 600 }}>{chargementAgents ? 'Chargement…' : `${totalAgents} agent(s)`}</span>}
+        action={(
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: '#78716c', fontWeight: 600 }}>{chargementAgents ? 'Chargement…' : `${totalAgents} agent(s)`}</span>
+            <LienAction to={`/agents?filialeId=${id}`}>Voir tous</LienAction>
+          </span>
+        )}
       >
         {erreurAgents && (
           <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#FEF2F1', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -320,8 +503,12 @@ export default function FilialeDetailPage() {
                       {agent.estGerant && <span style={{ marginLeft: 6 }}><Badge tone="red">Gérant</Badge></span>}
                     </td>
                     <td style={{ padding: '10px 14px', color: '#57534e' }}>{agent.fonction || '—'}</td>
-                    <td style={{ padding: '10px 14px', color: '#57534e' }}>{agent.departement?.nom || '—'}</td>
-                    <td style={{ padding: '10px 14px', color: '#57534e' }}>{agent.service?.nom || '—'}</td>
+                    <td style={{ padding: '10px 14px', color: '#57534e' }}>
+                      {agent.departement?.id ? <LienAction to={`/services?filialeId=${id}&departementId=${agent.departement.id}`}>{agent.departement?.nom || '—'}</LienAction> : (agent.departement?.nom || '—')}
+                    </td>
+                    <td style={{ padding: '10px 14px', color: '#57534e' }}>
+                      {agent.service?.id ? <LienAction to={`/agents?filialeId=${id}&serviceIds=${agent.service.id}`}>{agent.service?.nom || '—'}</LienAction> : (agent.service?.nom || '—')}
+                    </td>
                     <td style={{ padding: '10px 14px' }}><Badge tone={agent.actif ? 'green' : 'stone'}>{agent.actif ? 'Actif' : 'Sorti'}</Badge></td>
                   </tr>
                 ))}
@@ -329,7 +516,7 @@ export default function FilialeDetailPage() {
             </table>
             {totalAgents > agents.length && (
               <p style={{ margin: '10px 14px 0', fontSize: 12, color: '#78716c' }}>
-                Affichage des {agents.length} premiers agents sur {totalAgents}. <Link to={`/agents?filialeId=${id}`} style={{ color: '#007FE1', fontWeight: 600 }}>Voir tous les agents</Link>
+                Affichage des {agents.length} premiers agents sur {totalAgents}. <LienAction to={`/agents?filialeId=${id}`}>Voir tous les agents</LienAction>
               </p>
             )}
           </div>

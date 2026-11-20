@@ -21,6 +21,7 @@ import AgentsPage from './pages/agents/AgentsPage'
 import AgentDetailPage from './pages/agents/AgentDetailPage'
 import TrombinoscopePage from './pages/trombinoscope/TrombinoscopePage'
 import PilotagePage from './pages/pilotage/PilotagePage'
+import ModuleAVenirPage from './pages/avenir/ModuleAVenirPage'
 import MainLayout from './components/layout/MainLayout'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { PERMISSIONS } from './config/permissions'
@@ -107,12 +108,12 @@ function App() {
             <Route path="services" element={<RoleRoute roles={ADMIN_ROLES}><ServicesPage /></RoleRoute>} />
 
             {/* TODO: Routes à implémenter */}
-            <Route path="formations" element={<RoleRoute roles={STAFF_ROLES}><div className="p-6">Module Formations (à venir)</div></RoleRoute>} />
-            <Route path="evaluations" element={<RoleRoute roles={MANAGER_ROLES}><div className="p-6">Module Évaluations (à venir)</div></RoleRoute>} />
+            <Route path="formations" element={<RoleRoute roles={STAFF_ROLES}><ModuleAVenirPage titre="Formations" description="Gestion des formations, inscriptions et suivi des parcours de développement des compétences." /></RoleRoute>} />
+            <Route path="evaluations" element={<RoleRoute roles={MANAGER_ROLES}><ModuleAVenirPage titre="Évaluations" description="Campagnes d'évaluation, objectifs et suivi des performances des collaborateurs." /></RoleRoute>} />
             <Route path="equipe" element={<RoleRoute roles={MANAGER_ROLES}><EquipePage /></RoleRoute>} />
             <Route path="utilisateurs" element={<RoleRoute roles={ADMIN_ROLES}><UtilisateursPage /></RoleRoute>} />
-            <Route path="statistiques" element={<RoleRoute roles={ADMIN_ROLES}><div className="p-6">Statistiques (à venir)</div></RoleRoute>} />
-            <Route path="parametres" element={<RoleRoute roles={ADMIN_ROLES}><div className="p-6">Paramètres (à venir)</div></RoleRoute>} />
+            <Route path="statistiques" element={<RoleRoute roles={ADMIN_ROLES}><ModuleAVenirPage titre="Statistiques" description="Tableaux de bord statistiques et rapports consolidés sur l'activité et les effectifs." /></RoleRoute>} />
+            <Route path="parametres" element={<RoleRoute roles={ADMIN_ROLES}><ModuleAVenirPage titre="Paramètres" description="Configuration de l'application, des préférences et des options d'administration." /></RoleRoute>} />
           </Route>
 
           {/* Redirection par défaut */}

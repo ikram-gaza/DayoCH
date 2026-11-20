@@ -289,8 +289,20 @@ export default function AgentsPage() {
                     {afficherFiliale && (
                       <td style={{ padding: '12px 16px', color: '#57534e', fontSize: 13 }}>{nomFiliale(agent)}</td>
                     )}
-                    <td style={{ padding: '12px 16px', color: '#57534e', fontSize: 13 }}>{agent.departement?.nom || '—'}</td>
-                    <td style={{ padding: '12px 16px', color: '#57534e', fontSize: 13 }}>{agent.service?.nom || '—'}</td>
+                    <td style={{ padding: '12px 16px', color: '#57534e', fontSize: 13 }}>
+                      {agent.departement?.id ? (
+                        <Link to={`/services?departementId=${agent.departement.id}`} style={{ color: '#007FE1', fontWeight: 600, textDecoration: 'none' }}>
+                          {agent.departement.nom || '—'}
+                        </Link>
+                      ) : (agent.departement?.nom || '—')}
+                    </td>
+                    <td style={{ padding: '12px 16px', color: '#57534e', fontSize: 13 }}>
+                      {agent.service?.id ? (
+                        <Link to={`/agents?serviceIds=${agent.service.id}${agent.departement?.id ? `&departementIds=${agent.departement.id}` : ''}`} style={{ color: '#007FE1', fontWeight: 600, textDecoration: 'none' }}>
+                          {agent.service.nom || '—'}
+                        </Link>
+                      ) : (agent.service?.nom || '—')}
+                    </td>
                     <td style={{ padding: '12px 16px', color: '#57534e', fontSize: 13, whiteSpace: 'nowrap' }}>{formaterDate(agent.dateEmbauche)}</td>
                     <td style={{ padding: '12px 16px' }}>
                       <Badge tone={agent.userId ? 'green' : 'stone'}>{agent.userId ? 'Oui' : 'Non'}</Badge>

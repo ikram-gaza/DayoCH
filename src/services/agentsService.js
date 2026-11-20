@@ -1,5 +1,7 @@
 import { exporterTableau } from '../utils/export'
 import { api, lire, telecharger, televerser } from './apiClient'
+import { normaliserDepartement } from './departementsService'
+import { normaliserService } from './servicesService'
 
 function extraireListe(data) {
   if (Array.isArray(data)) return data
@@ -121,9 +123,11 @@ export const apiAgents = {
       lire('/organisation/departements', { limit: 200, sortBy: 'nom', sortOrder: 'ASC' }).catch(() => []),
       lire('/organisation/services', { limit: 200, sortBy: 'nom', sortOrder: 'ASC' }).catch(() => []),
     ])
+    const listeDepartements = extraireListe(departements).length ? extraireListe(departements) : (Array.isArray(departements) ? departements : (departements?.items || []))
+    const listeServices = extraireListe(services).length ? extraireListe(services) : (Array.isArray(services) ? services : (services?.items || []))
     return {
-      departements: extraireListe(departements).length ? extraireListe(departements) : (departements.items || departements || []),
-      services: extraireListe(services).length ? extraireListe(services) : (services.items || services || []),
+      departements: listeDepartements.map(normaliserDepartement),
+      services: listeServices.map(normaliserService),
     }
   },
 

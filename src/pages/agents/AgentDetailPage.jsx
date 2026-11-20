@@ -139,8 +139,18 @@ export default function AgentDetailPage() {
         </div>
 
         <dl style={{ flex: 1, minWidth: 260, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, margin: 0 }}>
-          <Donnee libelle="Département" valeur={fiche.departement?.nom} />
-          <Donnee libelle="Service" valeur={fiche.service?.nom} />
+          <Donnee
+            libelle="Département"
+            valeur={fiche.departement?.id
+              ? <Link to={`/services?departementId=${fiche.departement.id}`} style={{ color: '#007FE1', fontWeight: 600, textDecoration: 'none' }}>{fiche.departement.nom || '—'}</Link>
+              : fiche.departement?.nom}
+          />
+          <Donnee
+            libelle="Service"
+            valeur={fiche.service?.id
+              ? <Link to={`/agents?serviceIds=${fiche.service.id}${fiche.departement?.id ? `&departementIds=${fiche.departement.id}` : ''}`} style={{ color: '#007FE1', fontWeight: 600, textDecoration: 'none' }}>{fiche.service.nom || '—'}</Link>
+              : fiche.service?.nom}
+          />
           <Donnee libelle="Email" valeur={fiche.email} />
           <Donnee libelle="Téléphone" valeur={fiche.telephone} />
           <Donnee libelle="Date d'embauche" valeur={formaterDate(fiche.dateEmbauche)} />

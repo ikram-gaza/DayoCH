@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Layers, Plus, Search, FilterX, Pencil, Trash2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { Layers, Plus, Search, FilterX, Pencil, Trash2, CheckCircle2, AlertCircle, Users } from 'lucide-react'
 import { servicesService, messageErreurService } from '../../services/servicesService'
 import { departementsService } from '../../services/departementsService'
 import { filialesService } from '../../services/filialesService'
@@ -38,6 +40,8 @@ function BadgeStatut({ actif }) {
 }
 
 export default function ServicesPage() {
+  const [searchParams] = useSearchParams()
+  const queryClient = useQueryClient()
   const [pageData, setPageData] = useState({ items: [], total: 0, page: 1, pages: 1, limit: 20 })
   const [chargement, setChargement] = useState(true)
   const [erreur, setErreur] = useState('')
@@ -50,32 +54,38 @@ export default function ServicesPage() {
 
   const [recherche, setRecherche] = useState('')
   const rechercheDifferee = useDebounce(recherche, 350)
-  const [departementId, setDepartementId] = useState('')
+  const [departementId, setDepartementId] = useState(() => searchParams.get('departementId') || searchParams.get('departementIds') || '')
+  const [filialeId, setFilialeId] = useState(() => searchParams.get('filialeId') || '')
   const [actif, setActif] = useState('')
   const [sansResponsable, setSansResponsable] = useState('')
   const [sansAgent, setSansAgent] = useState('')
   const [sortOrder, setSortOrder] = useState('ASC')
   const [page, setPage] = useState(1)
 
+  const invaliderReferentiels = () => queryClient.invalidateQueries({ predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'agents' && q.queryKey.includes('referentiels') })
+
   const filtres = useMemo(() => ({
     recherche: rechercheDifferee || undefined,
     departementIds: departementId || undefined,
+    filialeId: filialeId || undefined,
     actif: actif || undefined,
     sansResponsable: sansResponsable || undefined,
     sansAgent: sansAgent || undefined,
     sortOrder: sortOrder || 'ASC',
     page: String(page),
     limit: '20',
-  }), [rechercheDifferee, departementId, actif, sansResponsable, sansAgent, sortOrder, page])
+  }), [rechercheDifferee, departementId, filialeId, actif, sansResponsable, sansAgent, sortOrder, page])
 
-  useEffect(() => { setPage(1) }, [rechercheDifferee, departementId, actif, sansResponsable, sansAgent, sortOrder])
+  useEffect(() => { setPage(1) }, [rechercheDifferee, departementId, filialeId, actif, sansResponsable, sansAgent, sortOrder])
 
   const charger = async () => {
     setChargement(true)
     setErreur('')
     try {
       const data = await servicesService.lister(filtres)
-      setPageData(data)
+      let items = data.items || []
+      if (filialeId) items = items.filter((s) => String(s.filialeId || s.filiale?.id || '') === String(filialeId))
+      setPageData({ ...data, items, total: filialeId ? items.length : data.total })
     } catch (e) {
       setErreur(messageErreurService(e))
     } finally {
@@ -110,11 +120,12 @@ export default function ServicesPage() {
     setTimeout(() => setToast(null), 3500)
   }
 
-  const nbFiltres = [rechercheDifferee, departementId, actif, sansResponsable, sansAgent].filter(Boolean).length + (sortOrder !== 'ASC' ? 1 : 0)
+  const nbFiltres = [rechercheDifferee, departementId, filialeId, actif, sansResponsable, sansAgent].filter(Boolean).length + (sortOrder !== 'ASC' ? 1 : 0)
 
   const reinitialiser = () => {
     setRecherche('')
     setDepartementId('')
+    setFilialeId('')
     setActif('')
     setSansResponsable('')
     setSansAgent('')
@@ -142,6 +153,7 @@ export default function ServicesPage() {
         afficherToast('Service créé.')
       }
       await charger()
+      await invaliderReferentiels()
       return true
     } catch (e) {
       afficherToast(`Erreur : ${messageErreurService(e)}`)
@@ -154,6 +166,7 @@ export default function ServicesPage() {
     try {
       await servicesService.supprimer(service.id)
       await charger()
+      await invaliderReferentiels()
       afficherToast('Service supprimé.')
     } catch (e) {
       afficherToast(`Erreur : ${messageErreurService(e)}`)
@@ -208,6 +221,12 @@ export default function ServicesPage() {
             <select value={departementId} onChange={(e) => setDepartementId(e.target.value)} style={styleInput}>
               <option value="">Tous les départements</option>
               {departements.map((d) => <option key={d.id} value={d.id}>{d.nom}</option>)}
+            </select>
+          </Champ>
+          <Champ label="Filiale">
+            <select value={filialeId} onChange={(e) => setFilialeId(e.target.value)} style={styleInput}>
+              <option value="">Toutes les filiales</option>
+              {filiales.map((f) => <option key={f.id} value={f.id}>{f.nom}{f.code ? ` (${f.code})` : ''}</option>)}
             </select>
           </Champ>
           <Champ label="Statut">
@@ -274,7 +293,14 @@ export default function ServicesPage() {
                     <td style={{ padding: '12px 16px', color: '#57534e' }}>{s.effectif ?? '—'}</td>
                     <td style={{ padding: '12px 16px' }}><BadgeStatut actif={s.actif} /></td>
                     <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'inline-flex', gap: 6 }}>
+                      <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <Link
+                          to={`/agents?serviceIds=${s.id}${s.departementId ? `&departementIds=${s.departementId}` : ''}`}
+                          title="Voir les agents du service"
+                          style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+                        >
+                          <Users size={14} />
+                        </Link>
                         <button type="button" title="Modifier" onClick={() => ouvrirEdition(s)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e7e5e4', background: 'white', color: '#57534e', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Pencil size={14} />
                         </button>

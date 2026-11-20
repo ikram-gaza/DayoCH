@@ -84,6 +84,8 @@ export function parametresServices(filtres = {}) {
   if (filtres.page) p.page = String(filtres.page)
   if (filtres.limit) p.limit = String(filtres.limit)
 
+  // `filialeId` n'est pas un paramètre de requête accepté par GET /organisation/services ;
+  // le filtrage par filiale est géré côté client (ou via le contexte X-Filiale-Id).
   const ids = Array.isArray(filtres.departementIds)
     ? filtres.departementIds.filter(Boolean)
     : texte(filtres.departementIds)
