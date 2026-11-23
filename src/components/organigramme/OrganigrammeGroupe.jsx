@@ -10,6 +10,7 @@ import { apiOrganigramme } from '../../services/apiOrganigramme'
 import { exporterTableau } from '../../utils/export'
 import ExportButtons from '../common/ExportButtons'
 import GroupOrgChart from './GroupOrgChart'
+import PanneauNoeudOrganigramme from './PanneauNoeudOrganigramme'
 
 const boutonSecondaire = {
   display: 'inline-flex',
@@ -59,6 +60,7 @@ export default function OrganigrammeGroupe() {
   const [erreur, setErreur] = useState(null)
   const [exportEnCours, setExportEnCours] = useState(null)
   const [replies, setReplies] = useState(() => new Set())
+  const [noeudSelectionne, setNoeudSelectionne] = useState(null)
 
   const modifierFiltre = (cle, valeur) => {
     setChargement(true)
@@ -202,21 +204,26 @@ export default function OrganigrammeGroupe() {
         </div>
       )}
 
-      <div style={{
-        height: '70vh', minHeight: 520, background: 'white', borderRadius: 16,
-        border: '1px solid #e7e5e4', overflow: 'hidden',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-      }}>
-        {chargement ? (
-          <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: '#78716c', fontSize: 13 }}>
-            Chargement de l’organigramme…
-          </div>
-        ) : arbre ? (
-          <GroupOrgChart arbre={arbre} replies={replies} onToggleBranche={basculerBranche} />
-        ) : (
-          <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: '#78716c', fontSize: 13 }}>
-            Aucun organigramme disponible.
-          </div>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'stretch', minHeight: 520 }}>
+        <div style={{
+          flex: 1, minWidth: 0, height: '70vh', minHeight: 520, background: 'white', borderRadius: 16,
+          border: '1px solid #e7e5e4', overflow: 'hidden',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+        }}>
+          {chargement ? (
+            <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: '#78716c', fontSize: 13 }}>
+              Chargement de l’organigramme…
+            </div>
+          ) : arbre ? (
+            <GroupOrgChart arbre={arbre} replies={replies} onToggleBranche={basculerBranche} onSelectNode={setNoeudSelectionne} />
+          ) : (
+            <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: '#78716c', fontSize: 13 }}>
+              Aucun organigramme disponible.
+            </div>
+          )}
+        </div>
+        {noeudSelectionne && (
+          <PanneauNoeudOrganigramme noeud={noeudSelectionne} onClose={() => setNoeudSelectionne(null)} onChanged={charger} />
         )}
       </div>
     </div>

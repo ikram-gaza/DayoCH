@@ -21,6 +21,7 @@ function donneesNoeud(noeud, replies) {
   const [prenom = '', ...reste] = (noeud.libelle || '').split(' ')
 
   return {
+    id: noeud.id,
     libelle: noeud.libelle,
     sousTitre: noeud.sousTitre ?? noeud.fonction ?? null,
     code: noeud.code ?? null,
@@ -32,6 +33,11 @@ function donneesNoeud(noeud, replies) {
     prenom,
     nom: reste.join(' '),
     agentId: noeud.agentId ?? noeud.agent?.id ?? noeud.idAgent ?? noeud.referenceId ?? (noeud.niveau === 'AGENT' ? noeud.id : null),
+    filialeId: noeud.filialeId ?? noeud.filiale?.id ?? null,
+    departementId: noeud.departementId ?? noeud.departement?.id ?? null,
+    serviceId: noeud.serviceId ?? noeud.service?.id ?? null,
+    parentId: noeud.parentId ?? noeud.parent?.id ?? null,
+    brut: noeud,
   }
 }
 
@@ -84,7 +90,7 @@ function calculerDisposition(racine, replies) {
   return { noeuds, liens }
 }
 
-function GroupOrgChartInner({ arbre, replies, onToggleBranche }) {
+function GroupOrgChartInner({ arbre, replies, onToggleBranche, onSelectNode }) {
   const navigate = useNavigate()
   const { fitView } = useReactFlow()
   const disposition = useMemo(
@@ -113,6 +119,10 @@ function GroupOrgChartInner({ arbre, replies, onToggleBranche }) {
         fitView
         fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
         onNodeClick={(_evenement, noeud) => {
+          if (onSelectNode) {
+            onSelectNode(noeud.data)
+            return
+          }
           if (noeud.data.niveau === 'AGENT') {
             if (noeud.data.agentId) navigate(`/agents/${noeud.data.agentId}`)
             return
