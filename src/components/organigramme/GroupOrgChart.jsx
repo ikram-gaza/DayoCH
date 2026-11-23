@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ReactFlow, {
   Background,
   Controls,
@@ -30,6 +31,7 @@ function donneesNoeud(noeud, replies) {
     replie: replies.has(noeud.id),
     prenom,
     nom: reste.join(' '),
+    agentId: noeud.agentId ?? noeud.agent?.id ?? noeud.idAgent ?? noeud.referenceId ?? (noeud.niveau === 'AGENT' ? noeud.id : null),
   }
 }
 
@@ -83,6 +85,7 @@ function calculerDisposition(racine, replies) {
 }
 
 function GroupOrgChartInner({ arbre, replies, onToggleBranche }) {
+  const navigate = useNavigate()
   const { fitView } = useReactFlow()
   const disposition = useMemo(
     () => (arbre ? calculerDisposition(arbre, replies) : null),
@@ -110,9 +113,11 @@ function GroupOrgChartInner({ arbre, replies, onToggleBranche }) {
         fitView
         fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
         onNodeClick={(_evenement, noeud) => {
-          if (noeud.data.niveau !== 'AGENT' && noeud.data.nbEnfants > 0) {
-            onToggleBranche(noeud.id)
+          if (noeud.data.niveau === 'AGENT') {
+            if (noeud.data.agentId) navigate(`/agents/${noeud.data.agentId}`)
+            return
           }
+          if (noeud.data.nbEnfants > 0) onToggleBranche(noeud.id)
         }}
         nodesDraggable={false}
         nodesConnectable={false}

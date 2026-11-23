@@ -38,12 +38,14 @@ export default function OrganisationNode({ data }) {
   const allure = ALLURES[data.niveau] || ALLURES.SERVICE
   const Icone = allure.icon
   const estAgent = data.niveau === 'AGENT'
+  const cliquable = estAgent ? Boolean(data.agentId) : data.nbEnfants > 0
 
   return (
     <>
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} isConnectable={false} />
 
       <div
+        title={estAgent && data.agentId ? 'Voir la fiche agent' : undefined}
         style={{
           width: 220,
           minHeight: 76,
@@ -61,6 +63,7 @@ export default function OrganisationNode({ data }) {
             ? '0 0 0 2px #F24333, 0 2px 8px rgba(0,0,0,0.08)'
             : '0 2px 8px rgba(0,0,0,0.06)',
           textAlign: 'left',
+          cursor: cliquable ? 'pointer' : 'default',
         }}
       >
         {!estAgent && data.nbEnfants > 0 && (
