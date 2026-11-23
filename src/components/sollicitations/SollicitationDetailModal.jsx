@@ -207,7 +207,7 @@ export default function SollicitationDetailModal({
                 rows={3}
                 value={commentaire}
                 onChange={(e) => setCommentaire(e.target.value)}
-                placeholder="Expliquez la raison du refus au collaborateur."
+                placeholder="Expliquez la raison du refus ou la solution alternative proposée."
                 style={{
                   width: '100%', boxSizing: 'border-box', resize: 'vertical',
                   padding: '10px 14px', fontSize: 13, borderRadius: 12,
@@ -287,7 +287,7 @@ export default function SollicitationDetailModal({
                       boxShadow: '0 4px 14px rgba(22,163,74,0.25)',
                     }}
                   >
-                    {sollicitation.statut === 'en_cours' ? <><CheckCheck size={15} /> Marquer traitée</> : <><Check size={15} /> Approuver</>}
+                    {sollicitation.statut === 'en_cours' ? <><CheckCheck size={15} /> Marquer résolue</> : <><Check size={15} /> Approuver</>}
                   </button>
                 )
               )}

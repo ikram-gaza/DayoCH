@@ -222,10 +222,10 @@ export default function SollicitationsPage() {
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1c1917', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
             <MessageSquare size={24} style={{ color: '#007FE1' }} />
-            Sollicitations
+            Sollicitations IT
           </h1>
           <p style={{ fontSize: 13, color: '#78716c', margin: '4px 0 0' }}>
-            Attestations, avances, missions, formations… soumettez et suivez vos demandes RH.
+            Signalez un problème technique ou demandez une assistance à l’équipe informatique / DSI.
           </p>
         </div>
         <button
@@ -247,7 +247,7 @@ export default function SollicitationsPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
         <StatCard label="En attente" value={stats.enAttente} hint="demandes" icon={Clock} color="#a16207" bg="#fef9c3" />
         <StatCard label="En cours" value={stats.enCours} hint="en traitement" icon={Inbox} color="#007FE1" bg="#E5F2FD" />
-        <StatCard label="Traitées" value={stats.traitees} hint="approuvées" icon={CheckCheck} color="#15803d" bg="#dcfce7" />
+        <StatCard label="Résolues" value={stats.traitees} hint="résolues" icon={CheckCheck} color="#15803d" bg="#dcfce7" />
         <StatCard label="Refusées" value={stats.refusees} hint="ce cycle" icon={XCircle} color="#b91c1c" bg="#FEF2F1" />
       </div>
 
@@ -361,7 +361,7 @@ export default function SollicitationsPage() {
           <p style={{ fontSize: 13, color: '#78716c', margin: '4px 0 0' }}>
             {activeTab === 'mes'
               ? 'Vous n\'avez aucune demande pour ces critères.'
-              : 'Aucune demande de votre équipe à traiter pour le moment.'}
+              : 'Aucun ticket IT à traiter pour le moment.'}
           </p>
         </div>
       ) : (

@@ -1,71 +1,91 @@
 /**
- * Service de gestion des Sollicitations RH - Groupe Dayo
+ * Service de gestion des Sollicitations IT - Groupe Dayo
  *
- * Les sollicitations couvrent les demandes diverses des collaborateurs :
- * attestations, avances, ordres de mission, formations, etc.
- * Les données sont persistées en localStorage en attendant le backend.
+ * Les sollicitations couvrent les demandes d'assistance technique
+ * adressées à l'équipe informatique / DSI.
+ * Données persistées en localStorage en attendant le backend.
  */
 
 export const TYPES_SOLLICITATIONS = [
   {
-    id: 'attestation_travail',
-    label: 'Attestation de travail',
-    code: 'ATT',
-    color: '#007FE1',
-    bg: '#E5F2FD',
-    delaiJours: 2,
+    id: 'materiel_panne',
+    label: 'Panne matériel',
+    code: 'MAT',
+    color: '#dc2626',
+    bg: '#FEF2F1',
+    delaiJours: 1,
     requiresJustificatif: false,
-    description: 'Justificatif d\'emploi pour démarches administratives ou bancaires.',
+    description: 'Ordinateur, écran, clavier, souris, imprimante ou autre équipement défaillant.',
   },
   {
-    id: 'attestation_salaire',
-    label: 'Attestation de salaire',
-    code: 'SAL',
+    id: 'acces_compte',
+    label: 'Accès / compte / mot de passe',
+    code: 'ACC',
     color: '#7c3aed',
     bg: '#f3e8ff',
-    delaiJours: 3,
+    delaiJours: 1,
     requiresJustificatif: false,
-    description: 'Document attestant de la rémunération pour un dossier de crédit.',
+    description: 'Problème de connexion, compte bloqué, réinitialisation de mot de passe, droits d’accès.',
   },
   {
-    id: 'avance_salaire',
-    label: 'Avance sur salaire',
-    code: 'AVS',
+    id: 'reseau_connexion',
+    label: 'Réseau / connexion',
+    code: 'NET',
+    color: '#007FE1',
+    bg: '#E5F2FD',
+    delaiJours: 1,
+    requiresJustificatif: false,
+    description: 'Wi-Fi, internet, VPN, lenteur réseau ou impossibilité d’accéder aux ressources.',
+  },
+  {
+    id: 'logiciel_application',
+    label: 'Logiciel / application',
+    code: 'APP',
     color: '#16a34a',
     bg: '#dcfce7',
-    delaiJours: 5,
-    requiresJustificatif: true,
-    description: 'Demande d\'avance exceptionnelle sur la paie du mois en cours.',
-  },
-  {
-    id: 'ordre_mission',
-    label: 'Ordre de mission',
-    code: 'MIS',
-    color: '#a16207',
-    bg: '#fef9c3',
     delaiJours: 2,
     requiresJustificatif: false,
-    description: 'Autorisation de déplacement professionnel avec prise en charge.',
+    description: 'Bug applicatif, erreur logiciel, installation, mise à jour ou configuration.',
   },
   {
-    id: 'demande_formation',
-    label: 'Demande de formation',
-    code: 'FOR',
-    color: '#db2777',
-    bg: '#fce7f3',
-    delaiJours: 7,
+    id: 'messagerie',
+    label: 'Messagerie / collaboration',
+    code: 'MSG',
+    color: '#0891b2',
+    bg: '#cffafe',
+    delaiJours: 1,
+    requiresJustificatif: false,
+    description: 'Email, Teams/Outlook, calendrier, partage de fichiers ou outils collaboratifs.',
+  },
+  {
+    id: 'securite_incident',
+    label: 'Sécurité / incident',
+    code: 'SEC',
+    color: '#b91c1c',
+    bg: '#fee2e2',
+    delaiJours: 0,
+    requiresJustificatif: false,
+    description: 'Phishing, virus, activité suspecte, perte de données ou incident de sécurité.',
+  },
+  {
+    id: 'demande_equipement',
+    label: 'Demande d’équipement / installation',
+    code: 'EQP',
+    color: '#a16207',
+    bg: '#fef9c3',
+    delaiJours: 3,
     requiresJustificatif: true,
-    description: 'Inscription à une formation interne ou externe financée par Dayo.',
+    description: 'Nouvel équipement, périphérique, installation de poste ou besoin matériel.',
   },
   {
     id: 'autre',
-    label: 'Autre demande',
+    label: 'Autre demande IT',
     code: 'AUT',
     color: '#57534e',
     bg: '#f5f5f4',
-    delaiJours: 5,
+    delaiJours: 3,
     requiresJustificatif: false,
-    description: 'Toute autre demande à traiter par les services RH.',
+    description: 'Toute autre demande technique à traiter par la DSI.',
   },
 ]
 
@@ -73,7 +93,7 @@ export const STATUTS_SOLLICITATIONS = {
   en_attente: { label: 'En attente', color: '#a16207', bg: '#fef9c3', dot: '#eab308' },
   en_cours: { label: 'En cours', color: '#007FE1', bg: '#E5F2FD', dot: '#007FE1' },
   approuvee: { label: 'Approuvée', color: '#15803d', bg: '#dcfce7', dot: '#22c55e' },
-  traitee: { label: 'Traitée', color: '#0f766e', bg: '#ccfbf1', dot: '#14b8a6' },
+  traitee: { label: 'Résolue', color: '#0f766e', bg: '#ccfbf1', dot: '#14b8a6' },
   refusee: { label: 'Refusée', color: '#b91c1c', bg: '#FEF2F1', dot: '#ef4444' },
   annulee: { label: 'Annulée', color: '#57534e', bg: '#f5f5f4', dot: '#a8a29e' },
 }
@@ -84,7 +104,8 @@ export const PRIORITES_SOLLICITATIONS = {
   haute: { label: 'Haute', color: '#b91c1c', bg: '#FEF2F1', weight: 3 },
 }
 
-const STORAGE_KEY = 'dayoch_sollicitations_v2'
+const STORAGE_KEY = 'dayoch_sollicitations_it_v1'
+const LEGACY_STORAGE_KEY = 'dayoch_sollicitations_v2'
 
 const INITIAL_SOLLICITATIONS = []
 
@@ -92,6 +113,12 @@ function lireTout() {
   try {
     const data = localStorage.getItem(STORAGE_KEY)
     if (data) return JSON.parse(data)
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY)
+    if (legacy) {
+      // Ne pas réutiliser les anciennes données RH : démarrer un espace IT propre.
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_SOLLICITATIONS))
+      return INITIAL_SOLLICITATIONS
+    }
   } catch {
     // Ignorer
   }
@@ -118,7 +145,6 @@ const estProprietaire = (sollicitation, user) => {
   )
 }
 
-// ── Sélecteurs purs (utiles pour dériver depuis un état local) ──
 export function mesSollicitationsDe(liste, user) {
   if (!user) return []
   return liste.filter((s) => estProprietaire(s, user))
@@ -155,31 +181,25 @@ export function statsSollicitationsDe(liste, user) {
 }
 
 export const sollicitationsService = {
-  // ── LECTURE ──
   getAll: () => lireTout(),
-
   getMesSollicitations: (user) => mesSollicitationsDe(lireTout(), user),
-
   getATraiter: (user) => sollicitationsATraiterDe(lireTout(), user),
-
   getHistoriqueEquipe: (user) => {
     if (!user || (user.role !== 'manager' && user.role !== 'super_admin')) return []
     const toutes = lireTout().filter((s) => !estProprietaire(s, user))
     if (user.role === 'super_admin') return toutes
     return toutes.filter((s) => s.filiale === user.filiale || !user.filiale)
   },
-
   getById: (id) => lireTout().find((s) => s.id === id) || null,
 
-  // ── CRÉATION ──
   creerSollicitation: (user, data) => {
     const toutes = lireTout()
     const annee = new Date().getFullYear()
-    const numero = toutes.filter((s) => s.reference?.includes(`SOL-${annee}`)).length + 1
+    const numero = toutes.filter((s) => s.reference?.includes(`IT-${annee}`)).length + 1
 
     const nouvelle = {
       id: Date.now(),
-      reference: `SOL-${annee}-${String(numero).padStart(3, '0')}`,
+      reference: `IT-${annee}-${String(numero).padStart(3, '0')}`,
       typeId: data.typeId,
       objet: data.objet?.trim(),
       description: data.description?.trim() || '',
@@ -205,7 +225,6 @@ export const sollicitationsService = {
     return nouvelle
   },
 
-  // ── TRAITEMENT ──
   changerStatut: (id, nouveauStatut, user, commentaire = null) => {
     const toutes = lireTout()
     const auteur = nomComplet(user)
@@ -261,6 +280,5 @@ export const sollicitationsService = {
     return misesAJour
   },
 
-  // ── STATISTIQUES ──
   getStats: (user) => statsSollicitationsDe(lireTout(), user),
 }

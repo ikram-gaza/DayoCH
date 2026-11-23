@@ -75,10 +75,10 @@ export default function NouvelleSollicitationModal({ isOpen, onClose, onSubmit }
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1c1917', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
               <MessageSquare size={20} style={{ color: '#007FE1' }} />
-              Nouvelle sollicitation
+              Nouvelle sollicitation IT
             </h2>
             <p style={{ fontSize: 13, color: '#78716c', margin: '4px 0 0' }}>
-              Décrivez votre demande, elle sera transmise aux RH pour traitement.
+              Décrivez votre problème ou besoin technique, il sera transmis à l’équipe informatique / DSI.
             </p>
           </div>
           <button
@@ -162,7 +162,7 @@ export default function NouvelleSollicitationModal({ isOpen, onClose, onSubmit }
               type="text"
               value={objet}
               onChange={(e) => setObjet(e.target.value)}
-              placeholder="Ex. Attestation de travail pour dossier bancaire"
+              placeholder="Ex. Impossible d’accéder à ma messagerie Outlook"
               style={{
                 width: '100%', boxSizing: 'border-box',
                 padding: '10px 14px', fontSize: 14, borderRadius: 12,
@@ -183,7 +183,7 @@ export default function NouvelleSollicitationModal({ isOpen, onClose, onSubmit }
               rows={4}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Précisez le contexte et les informations utiles au traitement de votre demande."
+              placeholder="Précisez le contexte, le message d’erreur, les actions déjà tentées et l’impact sur votre travail."
               style={{
                 width: '100%', boxSizing: 'border-box', resize: 'vertical',
                 padding: '10px 14px', fontSize: 14, borderRadius: 12,
@@ -245,7 +245,7 @@ export default function NouvelleSollicitationModal({ isOpen, onClose, onSubmit }
           {/* Pièce jointe */}
           <div>
             <label style={{ fontSize: 12, fontWeight: 700, color: '#78716c', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>
-              Justificatif (optionnel)
+              Pièce jointe / capture (optionnel)
             </label>
             <label style={{
               display: 'flex', alignItems: 'center', gap: 10,
@@ -255,7 +255,7 @@ export default function NouvelleSollicitationModal({ isOpen, onClose, onSubmit }
             }}>
               {pieceJointe ? <Paperclip size={16} style={{ color: '#007FE1' }} /> : <Upload size={16} />}
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {pieceJointe ? pieceJointe.name : 'Cliquez pour joindre un fichier (PDF, image)'}
+                {pieceJointe ? pieceJointe.name : 'Cliquez pour joindre une capture ou un fichier (PDF, image)'}
               </span>
               <input
                 type="file"
@@ -286,7 +286,7 @@ export default function NouvelleSollicitationModal({ isOpen, onClose, onSubmit }
                 boxShadow: '0 4px 14px rgba(0,127,225,0.25)',
               }}
             >
-              Envoyer la demande
+              Envoyer le ticket
             </button>
           </div>
         </form>
