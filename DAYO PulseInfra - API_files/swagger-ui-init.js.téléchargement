@@ -1,0 +1,4324 @@
+
+window.onload = function() {
+  // Build a system
+  let url = window.location.search.match(/url=([^&]+)/);
+  if (url && url.length > 1) {
+    url = decodeURIComponent(url[1]);
+  } else {
+    url = window.location.origin;
+  }
+  let options = {
+  "swaggerDoc": {
+    "openapi": "3.0.0",
+    "paths": {
+      "/api/v1/audit": {
+        "get": {
+          "operationId": "AuditController_lister",
+          "parameters": [
+            {
+              "name": "q",
+              "required": false,
+              "in": "query",
+              "description": "Recherche plein texte",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortOrder",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "DESC",
+                "enum": [
+                  "ASC",
+                  "DESC"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "resource",
+              "required": true,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "resourceId",
+              "required": true,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "userId",
+              "required": true,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Journal d audit"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/rbac/roles": {
+        "get": {
+          "operationId": "RbacController_roles",
+          "parameters": [],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Roles et permissions"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "post": {
+          "operationId": "RbacController_creerRole",
+          "parameters": [],
+          "responses": {
+            "201": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Roles et permissions"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/rbac/permissions": {
+        "get": {
+          "operationId": "RbacController_permissions",
+          "parameters": [],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Roles et permissions"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/rbac/roles/{id}/permissions": {
+        "put": {
+          "operationId": "RbacController_affecter",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Roles et permissions"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/users": {
+        "get": {
+          "operationId": "UsersController_lister",
+          "parameters": [
+            {
+              "name": "q",
+              "required": false,
+              "in": "query",
+              "description": "Recherche plein texte",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortOrder",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "DESC",
+                "enum": [
+                  "ASC",
+                  "DESC"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "xlsx",
+                "enum": [
+                  "xlsx",
+                  "pdf",
+                  "csv"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "recherche",
+              "required": false,
+              "in": "query",
+              "description": "Matricule, nom, prenom ou email",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "roleCodes",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "example": [
+                  "GERANT",
+                  "AGENT"
+                ],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "filialeId",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "actif",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "twoFactorEnabled",
+              "required": false,
+              "in": "query",
+              "description": "Comptes avec double authentification active",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "doitChangerMotDePasse",
+              "required": false,
+              "in": "query",
+              "description": "Comptes devant encore changer leur mot de passe",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "sansEmail",
+              "required": false,
+              "in": "query",
+              "description": "true : comptes sans email (connexion par matricule)",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "jamaisConnecte",
+              "required": false,
+              "in": "query",
+              "description": "Comptes jamais connectes",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "connexionDepuis",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "example": "2026-01-01",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Utilisateurs"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "post": {
+          "operationId": "UsersController_creer",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateUserDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Utilisateurs"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/users/export": {
+        "get": {
+          "operationId": "UsersController_exporter",
+          "summary": "Export de la liste filtree (xlsx, pdf ou csv)",
+          "parameters": [
+            {
+              "name": "q",
+              "required": false,
+              "in": "query",
+              "description": "Recherche plein texte",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortOrder",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "DESC",
+                "enum": [
+                  "ASC",
+                  "DESC"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "xlsx",
+                "enum": [
+                  "xlsx",
+                  "pdf",
+                  "csv"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "recherche",
+              "required": false,
+              "in": "query",
+              "description": "Matricule, nom, prenom ou email",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "roleCodes",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "example": [
+                  "GERANT",
+                  "AGENT"
+                ],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "filialeId",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "actif",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "twoFactorEnabled",
+              "required": false,
+              "in": "query",
+              "description": "Comptes avec double authentification active",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "doitChangerMotDePasse",
+              "required": false,
+              "in": "query",
+              "description": "Comptes devant encore changer leur mot de passe",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "sansEmail",
+              "required": false,
+              "in": "query",
+              "description": "true : comptes sans email (connexion par matricule)",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "jamaisConnecte",
+              "required": false,
+              "in": "query",
+              "description": "Comptes jamais connectes",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "connexionDepuis",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "example": "2026-01-01",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Utilisateurs"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/users/{id}": {
+        "get": {
+          "operationId": "UsersController_detail",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Utilisateurs"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "patch": {
+          "operationId": "UsersController_modifier",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateUserDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Utilisateurs"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "delete": {
+          "operationId": "UsersController_desactiver",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Utilisateurs"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/filiales": {
+        "get": {
+          "operationId": "FilialesController_lister",
+          "parameters": [
+            {
+              "name": "q",
+              "required": false,
+              "in": "query",
+              "description": "Recherche plein texte",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortOrder",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "DESC",
+                "enum": [
+                  "ASC",
+                  "DESC"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "xlsx",
+                "enum": [
+                  "xlsx",
+                  "pdf",
+                  "csv"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "recherche",
+              "required": false,
+              "in": "query",
+              "description": "Code, nom, pays ou ville",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "pays",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "devise",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "actif",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "parentId",
+              "required": false,
+              "in": "query",
+              "description": "Filiales rattachees a cette entite mere",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "racinesSeulement",
+              "required": false,
+              "in": "query",
+              "description": "true : uniquement les entites de premier niveau",
+              "schema": {
+                "type": "boolean"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Filiales"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "post": {
+          "operationId": "FilialesController_creer",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateFilialeDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Filiales"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/filiales/export": {
+        "get": {
+          "operationId": "FilialesController_exporter",
+          "summary": "Export de la liste filtree (xlsx, pdf ou csv)",
+          "parameters": [
+            {
+              "name": "q",
+              "required": false,
+              "in": "query",
+              "description": "Recherche plein texte",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortOrder",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "DESC",
+                "enum": [
+                  "ASC",
+                  "DESC"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "xlsx",
+                "enum": [
+                  "xlsx",
+                  "pdf",
+                  "csv"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "recherche",
+              "required": false,
+              "in": "query",
+              "description": "Code, nom, pays ou ville",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "pays",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "devise",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "actif",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "parentId",
+              "required": false,
+              "in": "query",
+              "description": "Filiales rattachees a cette entite mere",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "racinesSeulement",
+              "required": false,
+              "in": "query",
+              "description": "true : uniquement les entites de premier niveau",
+              "schema": {
+                "type": "boolean"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Filiales"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/filiales/{id}": {
+        "get": {
+          "operationId": "FilialesController_detail",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Filiales"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "patch": {
+          "operationId": "FilialesController_modifier",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateFilialeDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Filiales"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "delete": {
+          "operationId": "FilialesController_archiver",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Filiales"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/auth/login": {
+        "post": {
+          "operationId": "AuthController_login",
+          "summary": "Connexion par email ou matricule",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/auth/2fa/verifier": {
+        "post": {
+          "operationId": "AuthController_verifier2fa",
+          "summary": "Seconde etape : code Google Authenticator",
+          "parameters": [],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/auth/refresh": {
+        "post": {
+          "operationId": "AuthController_rafraichir",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshTokenDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/auth/logout": {
+        "post": {
+          "operationId": "AuthController_logout",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshTokenDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "204": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/auth/logout-global": {
+        "post": {
+          "operationId": "AuthController_logoutGlobal",
+          "summary": "Deconnexion de tous les appareils",
+          "parameters": [],
+          "responses": {
+            "204": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/auth/profil": {
+        "get": {
+          "operationId": "AuthController_profil",
+          "summary": "Profil complet de l utilisateur connecte",
+          "parameters": [],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/auth/mot-de-passe/changer": {
+        "post": {
+          "operationId": "AuthController_changerMotDePasse",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangePasswordDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "204": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/auth/2fa/preparer": {
+        "post": {
+          "operationId": "AuthController_preparer2fa",
+          "summary": "Genere le secret et le QR code a scanner",
+          "parameters": [],
+          "responses": {
+            "201": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/auth/2fa/activer": {
+        "post": {
+          "operationId": "AuthController_activer2fa",
+          "summary": "Confirme l activation et retourne les codes de secours",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiverTwoFactorDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/auth/2fa/desactiver": {
+        "post": {
+          "operationId": "AuthController_desactiver2fa",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesactiverTwoFactorDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "204": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/auth/mot-de-passe/oublie/email": {
+        "post": {
+          "operationId": "AuthController_oublieParEmail",
+          "summary": "Agent avec email : envoi automatique du lien",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemandeResetEmailDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "202": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/auth/mot-de-passe/oublie/matricule": {
+        "post": {
+          "operationId": "AuthController_oublieParMatricule",
+          "summary": "Agent sans email : depot d une demande traitee par l administrateur",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemandeResetMatriculeDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "202": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/auth/mot-de-passe/reinitialiser": {
+        "post": {
+          "operationId": "AuthController_reinitialiser",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetPasswordDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "204": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/auth/mot-de-passe/demandes": {
+        "get": {
+          "operationId": "AuthController_listerDemandes",
+          "summary": "File des demandes de reinitialisation sans email",
+          "parameters": [
+            {
+              "name": "q",
+              "required": false,
+              "in": "query",
+              "description": "Recherche plein texte",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortOrder",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "DESC",
+                "enum": [
+                  "ASC",
+                  "DESC"
+                ],
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/auth/mot-de-passe/demandes/traiter": {
+        "post": {
+          "operationId": "AuthController_traiterDemande",
+          "summary": "Genere le lien a transmettre manuellement a l agent",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraiterDemandeResetDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/auth/mot-de-passe/demandes/rejeter": {
+        "post": {
+          "operationId": "AuthController_rejeterDemande",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraiterDemandeResetDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "204": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Authentification"
+          ]
+        }
+      },
+      "/api/v1/pilotage/tableau-de-bord": {
+        "get": {
+          "operationId": "PilotageController_tableauDeBord",
+          "summary": "Indicateurs, points d attention et modules accessibles",
+          "description": "Une seule requete pour la page d accueil : eviter six appels paralleles au chargement.",
+          "parameters": [],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Pilotage"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/pilotage/modules": {
+        "get": {
+          "operationId": "PilotageController_modules",
+          "summary": "Modules visibles par l utilisateur connecte (menu lateral)",
+          "parameters": [],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Pilotage"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/departements": {
+        "get": {
+          "operationId": "DepartementsController_lister",
+          "summary": "Liste paginee et filtrable des departements",
+          "parameters": [
+            {
+              "name": "q",
+              "required": false,
+              "in": "query",
+              "description": "Recherche plein texte",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortOrder",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "DESC",
+                "enum": [
+                  "ASC",
+                  "DESC"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "xlsx",
+                "enum": [
+                  "xlsx",
+                  "pdf",
+                  "csv"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "recherche",
+              "required": false,
+              "in": "query",
+              "description": "Code ou nom (insensible aux accents)",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "ids",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "actif",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "sansResponsable",
+              "required": false,
+              "in": "query",
+              "description": "Departements sans responsable designe",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "avecEffectifs",
+              "required": false,
+              "in": "query",
+              "description": "Inclut le nombre de services et l effectif",
+              "schema": {
+                "type": "boolean"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Departements"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "post": {
+          "operationId": "DepartementsController_creer",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateDepartementDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Departements"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/departements/export": {
+        "get": {
+          "operationId": "DepartementsController_exporter",
+          "summary": "Export de la liste filtree (xlsx, pdf ou csv)",
+          "parameters": [
+            {
+              "name": "q",
+              "required": false,
+              "in": "query",
+              "description": "Recherche plein texte",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortOrder",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "DESC",
+                "enum": [
+                  "ASC",
+                  "DESC"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "xlsx",
+                "enum": [
+                  "xlsx",
+                  "pdf",
+                  "csv"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "recherche",
+              "required": false,
+              "in": "query",
+              "description": "Code ou nom (insensible aux accents)",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "ids",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "actif",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "sansResponsable",
+              "required": false,
+              "in": "query",
+              "description": "Departements sans responsable designe",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "avecEffectifs",
+              "required": false,
+              "in": "query",
+              "description": "Inclut le nombre de services et l effectif",
+              "schema": {
+                "type": "boolean"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Departements"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/departements/{id}": {
+        "get": {
+          "operationId": "DepartementsController_detail",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Departements"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "patch": {
+          "operationId": "DepartementsController_modifier",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateDepartementDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Departements"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "delete": {
+          "operationId": "DepartementsController_archiver",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Departements"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/services": {
+        "get": {
+          "operationId": "ServicesController_lister",
+          "parameters": [
+            {
+              "name": "q",
+              "required": false,
+              "in": "query",
+              "description": "Recherche plein texte",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortOrder",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "DESC",
+                "enum": [
+                  "ASC",
+                  "DESC"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "xlsx",
+                "enum": [
+                  "xlsx",
+                  "pdf",
+                  "csv"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "recherche",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "departementIds",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "actif",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "sansResponsable",
+              "required": false,
+              "in": "query",
+              "description": "Services sans responsable designe",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "sansAgent",
+              "required": false,
+              "in": "query",
+              "description": "Services sans aucun agent rattache",
+              "schema": {
+                "type": "boolean"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Services"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "post": {
+          "operationId": "ServicesController_creer",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateServiceDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Services"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/services/export": {
+        "get": {
+          "operationId": "ServicesController_exporter",
+          "summary": "Export de la liste filtree (xlsx, pdf ou csv)",
+          "parameters": [
+            {
+              "name": "q",
+              "required": false,
+              "in": "query",
+              "description": "Recherche plein texte",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortOrder",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "DESC",
+                "enum": [
+                  "ASC",
+                  "DESC"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "xlsx",
+                "enum": [
+                  "xlsx",
+                  "pdf",
+                  "csv"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "recherche",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "departementIds",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "actif",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "sansResponsable",
+              "required": false,
+              "in": "query",
+              "description": "Services sans responsable designe",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "sansAgent",
+              "required": false,
+              "in": "query",
+              "description": "Services sans aucun agent rattache",
+              "schema": {
+                "type": "boolean"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Services"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/services/{id}": {
+        "get": {
+          "operationId": "ServicesController_detail",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Services"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "patch": {
+          "operationId": "ServicesController_modifier",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateServiceDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Services"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "delete": {
+          "operationId": "ServicesController_archiver",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Services"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/agents": {
+        "get": {
+          "operationId": "AgentsController_lister",
+          "summary": "Liste des agents",
+          "description": "Filtres cumulables : recherche, matricule, departements, services, fonction, actif, gerant, avecEmail, avecCompte, sansService, sansDepartement, periode d embauche, periode de sortie.",
+          "parameters": [
+            {
+              "name": "q",
+              "required": false,
+              "in": "query",
+              "description": "Recherche plein texte",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortOrder",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "DESC",
+                "enum": [
+                  "ASC",
+                  "DESC"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "xlsx",
+                "enum": [
+                  "xlsx",
+                  "pdf",
+                  "csv"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "recherche",
+              "required": false,
+              "in": "query",
+              "description": "Matricule, nom, prenom, email ou fonction",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "matricule",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "departementIds",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "serviceIds",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "filialeId",
+              "required": false,
+              "in": "query",
+              "description": "Reserve au SuperAdmin : cible une filiale",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "fonction",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "actif",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "estGerant",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "avecEmail",
+              "required": false,
+              "in": "query",
+              "description": "true : uniquement les agents disposant d un email",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "avecCompte",
+              "required": false,
+              "in": "query",
+              "description": "true : uniquement les agents ayant un compte de connexion",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "sansService",
+              "required": false,
+              "in": "query",
+              "description": "true : agents non rattaches a un service",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "sansDepartement",
+              "required": false,
+              "in": "query",
+              "description": "true : agents non rattaches a un departement",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "embaucheDu",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "example": "2024-01-01",
+                "type": "string"
+              }
+            },
+            {
+              "name": "embaucheAu",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "example": "2026-12-31",
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortieDu",
+              "required": false,
+              "in": "query",
+              "description": "Agents sortis sur la periode",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortieAu",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "triPar",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "nom",
+                "enum": [
+                  "matricule",
+                  "nom",
+                  "prenom",
+                  "fonction",
+                  "dateEmbauche",
+                  "departement",
+                  "service",
+                  "createdAt"
+                ],
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Agents"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "post": {
+          "operationId": "AgentsController_creer",
+          "summary": "Creation d un agent",
+          "description": "creerCompte = true genere un compte de connexion sur le matricule et retourne le mot de passe provisoire une seule fois.",
+          "parameters": [],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateAgentDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Agents"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/agents/export": {
+        "get": {
+          "operationId": "AgentsController_exporter",
+          "summary": "Export de la liste filtree (xlsx, pdf ou csv)",
+          "parameters": [
+            {
+              "name": "q",
+              "required": false,
+              "in": "query",
+              "description": "Recherche plein texte",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortOrder",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "DESC",
+                "enum": [
+                  "ASC",
+                  "DESC"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "xlsx",
+                "enum": [
+                  "xlsx",
+                  "pdf",
+                  "csv"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "recherche",
+              "required": false,
+              "in": "query",
+              "description": "Matricule, nom, prenom, email ou fonction",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "matricule",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "departementIds",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "serviceIds",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "filialeId",
+              "required": false,
+              "in": "query",
+              "description": "Reserve au SuperAdmin : cible une filiale",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "fonction",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "actif",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "estGerant",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "avecEmail",
+              "required": false,
+              "in": "query",
+              "description": "true : uniquement les agents disposant d un email",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "avecCompte",
+              "required": false,
+              "in": "query",
+              "description": "true : uniquement les agents ayant un compte de connexion",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "sansService",
+              "required": false,
+              "in": "query",
+              "description": "true : agents non rattaches a un service",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "sansDepartement",
+              "required": false,
+              "in": "query",
+              "description": "true : agents non rattaches a un departement",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "embaucheDu",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "example": "2024-01-01",
+                "type": "string"
+              }
+            },
+            {
+              "name": "embaucheAu",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "example": "2026-12-31",
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortieDu",
+              "required": false,
+              "in": "query",
+              "description": "Agents sortis sur la periode",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "sortieAu",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "triPar",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "nom",
+                "enum": [
+                  "matricule",
+                  "nom",
+                  "prenom",
+                  "fonction",
+                  "dateEmbauche",
+                  "departement",
+                  "service",
+                  "createdAt"
+                ],
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Agents"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/agents/statistiques": {
+        "get": {
+          "operationId": "AgentsController_statistiques",
+          "summary": "Indicateurs d effectif de la filiale",
+          "parameters": [
+            {
+              "name": "filialeId",
+              "required": true,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Agents"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/agents/{id}": {
+        "get": {
+          "operationId": "AgentsController_detail",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Agents"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "patch": {
+          "operationId": "AgentsController_modifier",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateAgentDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Agents"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/agents/{id}/mutation": {
+        "patch": {
+          "operationId": "AgentsController_muter",
+          "summary": "Changement de departement ou de service, avec motif trace",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MuterAgentDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Agents"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/agents/{id}/designer-gerant": {
+        "patch": {
+          "operationId": "AgentsController_designerGerant",
+          "summary": "Designe cet agent comme gerant : l ancien perd le pouvoir de validation",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Agents"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/agents/{id}/sortie": {
+        "patch": {
+          "operationId": "AgentsController_sortir",
+          "summary": "Sortie d effectif : desactive l agent et son compte",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Agents"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/trombinoscope": {
+        "get": {
+          "operationId": "TrombinoscopeController_lister",
+          "summary": "Annuaire photographique, groupe par filiale",
+          "description": "Un compte de niveau groupe voit toutes les filiales. Un compte rattache a une filiale ne voit que la sienne, quels que soient les parametres envoyes.",
+          "parameters": [
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "xlsx",
+                "enum": [
+                  "xlsx",
+                  "pdf",
+                  "csv"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "recherche",
+              "required": false,
+              "in": "query",
+              "description": "Matricule, nom, prenom ou fonction",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "filialeIds",
+              "required": false,
+              "in": "query",
+              "description": "Limite a certaines filiales",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "departementIds",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "serviceIds",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "avecPhoto",
+              "required": false,
+              "in": "query",
+              "description": "true : seulement les agents ayant une photo",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "actif",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": true,
+                "type": "boolean"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Trombinoscope"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/trombinoscope/export": {
+        "get": {
+          "operationId": "TrombinoscopeController_exporter",
+          "summary": "Export du trombinoscope : PDF illustre, ou liste xlsx / csv",
+          "parameters": [
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "xlsx",
+                "enum": [
+                  "xlsx",
+                  "pdf",
+                  "csv"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "name": "recherche",
+              "required": false,
+              "in": "query",
+              "description": "Matricule, nom, prenom ou fonction",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "filialeIds",
+              "required": false,
+              "in": "query",
+              "description": "Limite a certaines filiales",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "departementIds",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "serviceIds",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "avecPhoto",
+              "required": false,
+              "in": "query",
+              "description": "true : seulement les agents ayant une photo",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "actif",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": true,
+                "type": "boolean"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Trombinoscope"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/agents/{id}/historique": {
+        "get": {
+          "operationId": "HistoriqueController_lister",
+          "summary": "Carriere de l agent",
+          "description": "Toutes les periodes, de la plus recente a la plus ancienne. La periode en cours a une date de fin nulle. Chaque ligne porte son motif (embauche, mutation, promotion...).",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Historique des postes"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/agents/{id}/historique/export": {
+        "get": {
+          "operationId": "HistoriqueController_exporter",
+          "summary": "Export de la carriere (xlsx, pdf ou csv)",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "xlsx",
+                "enum": [
+                  "xlsx",
+                  "pdf",
+                  "csv"
+                ],
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Historique des postes"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/agents/{id}/photo": {
+        "get": {
+          "operationId": "PiecesAgentController_photo",
+          "summary": "Photo de l agent (image binaire)",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Photos et signatures"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "post": {
+          "operationId": "PiecesAgentController_televerserPhoto",
+          "summary": "Televerse la photo (JPEG, PNG ou WebP, 2 Mio maximum)",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "multipart/form-data": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "fichier": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Photos et signatures"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "delete": {
+          "operationId": "PiecesAgentController_supprimerPhoto",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "204": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Photos et signatures"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/agents/{id}/signature": {
+        "get": {
+          "operationId": "PiecesAgentController_signature",
+          "summary": "Signature de l agent (image binaire)",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Photos et signatures"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "put": {
+          "operationId": "PiecesAgentController_definirSignature",
+          "summary": "Enregistre la signature tracee dans le navigateur",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignatureDataUrlDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Photos et signatures"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        },
+        "delete": {
+          "operationId": "PiecesAgentController_supprimerSignature",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "204": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Photos et signatures"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/agents/{id}/signature/fichier": {
+        "post": {
+          "operationId": "PiecesAgentController_televerserSignature",
+          "summary": "Depose une signature deja numerisee",
+          "description": "Variante du trace a la main : image JPEG, PNG ou WebP, 1 Mio maximum. Un PNG a fond transparent se superposera proprement a un document.",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "multipart/form-data": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "fichier": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Photos et signatures"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/organigramme": {
+        "get": {
+          "operationId": "OrganigrammeController_arbre",
+          "summary": "Arbre organisationnel au format JSON (pour affichage dans le front)",
+          "parameters": [
+            {
+              "name": "filialeId",
+              "required": false,
+              "in": "query",
+              "description": "Filiale ciblee (SuperAdmin)",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "departementId",
+              "required": false,
+              "in": "query",
+              "description": "Limite l organigramme a un departement",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "inclureAgents",
+              "required": false,
+              "in": "query",
+              "description": "Descendre jusqu aux agents",
+              "schema": {
+                "default": true,
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "seulementActifs",
+              "required": false,
+              "in": "query",
+              "description": "Exclure les entites desactivees",
+              "schema": {
+                "default": true,
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "dateReference",
+              "required": false,
+              "in": "query",
+              "description": "Organigramme tel qu il etait a cette date, reconstitue depuis l historique des postes. Absent : organisation d aujourd hui.",
+              "schema": {
+                "example": "2025-03-31",
+                "type": "string"
+              }
+            },
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "pdf",
+                "enum": [
+                  "pdf",
+                  "xlsx"
+                ],
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Organigramme"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/organigramme/synthese": {
+        "get": {
+          "operationId": "OrganigrammeController_synthese",
+          "summary": "Effectifs par departement et par service",
+          "parameters": [
+            {
+              "name": "filialeId",
+              "required": false,
+              "in": "query",
+              "description": "Filiale ciblee (SuperAdmin)",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "departementId",
+              "required": false,
+              "in": "query",
+              "description": "Limite l organigramme a un departement",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "inclureAgents",
+              "required": false,
+              "in": "query",
+              "description": "Descendre jusqu aux agents",
+              "schema": {
+                "default": true,
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "seulementActifs",
+              "required": false,
+              "in": "query",
+              "description": "Exclure les entites desactivees",
+              "schema": {
+                "default": true,
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "dateReference",
+              "required": false,
+              "in": "query",
+              "description": "Organigramme tel qu il etait a cette date, reconstitue depuis l historique des postes. Absent : organisation d aujourd hui.",
+              "schema": {
+                "example": "2025-03-31",
+                "type": "string"
+              }
+            },
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "pdf",
+                "enum": [
+                  "pdf",
+                  "xlsx"
+                ],
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Organigramme"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/organisation/organigramme/export": {
+        "get": {
+          "operationId": "OrganigrammeController_exporter",
+          "summary": "Export de l organigramme",
+          "description": "PDF : pyramide vectorielle (vue d ensemble, une page par departement, synthese). XLSX : feuille Pyramide (cellules fusionnees centrees), feuille Hierarchie repliable, feuille Effectifs.",
+          "parameters": [
+            {
+              "name": "filialeId",
+              "required": false,
+              "in": "query",
+              "description": "Filiale ciblee (SuperAdmin)",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "departementId",
+              "required": false,
+              "in": "query",
+              "description": "Limite l organigramme a un departement",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "inclureAgents",
+              "required": false,
+              "in": "query",
+              "description": "Descendre jusqu aux agents",
+              "schema": {
+                "default": true,
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "seulementActifs",
+              "required": false,
+              "in": "query",
+              "description": "Exclure les entites desactivees",
+              "schema": {
+                "default": true,
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "dateReference",
+              "required": false,
+              "in": "query",
+              "description": "Organigramme tel qu il etait a cette date, reconstitue depuis l historique des postes. Absent : organisation d aujourd hui.",
+              "schema": {
+                "example": "2025-03-31",
+                "type": "string"
+              }
+            },
+            {
+              "name": "format",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "default": "pdf",
+                "enum": [
+                  "pdf",
+                  "xlsx"
+                ],
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Organisation - Organigramme"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/catalogue/mes-categories": {
+        "get": {
+          "operationId": "HabilitationsController_mesCategories",
+          "summary": "Categories que l agent connecte peut gerer",
+          "description": "Reunit les designations nominatives et celles heritees de son service. La colonne origine indique laquelle des deux donne le droit.",
+          "parameters": [],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Catalogue - Habilitations sur les categories"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/catalogue/categories/{id}/habilitations": {
+        "get": {
+          "operationId": "HabilitationsController_designations",
+          "summary": "Agents et services designes sur la categorie",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Catalogue - Habilitations sur les categories"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/catalogue/categories/{id}/gestionnaires": {
+        "get": {
+          "operationId": "HabilitationsController_gestionnaires",
+          "summary": "Liste nominative des agents reellement habilites",
+          "description": "Developpe les designations collectives : chaque membre du service designe apparait, avec l origine de son droit.",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Catalogue - Habilitations sur les categories"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/catalogue/categories/{id}/peut-gerer": {
+        "get": {
+          "operationId": "HabilitationsController_peutGerer",
+          "summary": "Verifie le droit de l agent connecte sur cette categorie",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "niveau",
+              "required": true,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Catalogue - Habilitations sur les categories"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/catalogue/categories/{id}/habilitations/agents": {
+        "post": {
+          "operationId": "HabilitationsController_designerAgent",
+          "summary": "Designe un agent comme gestionnaire de la categorie",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignerAgentDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Catalogue - Habilitations sur les categories"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/catalogue/categories/{id}/habilitations/services": {
+        "post": {
+          "operationId": "HabilitationsController_designerService",
+          "summary": "Confie la categorie a un service entier",
+          "description": "Tout agent rattache au service gere alors la categorie. Le droit suit les mutations : un agent qui rejoint le service l obtient, celui qui le quitte le perd.",
+          "parameters": [
+            {
+              "name": "id",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignerServiceDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Catalogue - Habilitations sur les categories"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/catalogue/habilitations/agents/{designationId}": {
+        "delete": {
+          "operationId": "HabilitationsController_cloturerAgent",
+          "summary": "Met fin a une designation nominative (la ligne est datee, pas supprimee)",
+          "parameters": [
+            {
+              "name": "designationId",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloturerDesignationDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "204": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Catalogue - Habilitations sur les categories"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      },
+      "/api/v1/catalogue/habilitations/services/{designationId}": {
+        "delete": {
+          "operationId": "HabilitationsController_cloturerService",
+          "summary": "Met fin a une designation collective",
+          "parameters": [
+            {
+              "name": "designationId",
+              "required": true,
+              "in": "path",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloturerDesignationDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "204": {
+              "description": ""
+            }
+          },
+          "tags": [
+            "Catalogue - Habilitations sur les categories"
+          ],
+          "security": [
+            {
+              "bearer": []
+            }
+          ]
+        }
+      }
+    },
+    "info": {
+      "title": "DAYO PulseInfra",
+      "description": "Plateforme de digitalisation du groupe Dayo : filiales, organisation et historique des postes, stocks et habilitations par categorie, fournisseurs, salles, equipements et reservations.",
+      "version": "1.0",
+      "contact": {}
+    },
+    "tags": [],
+    "servers": [],
+    "components": {
+      "securitySchemes": {
+        "bearer": {
+          "scheme": "bearer",
+          "bearerFormat": "JWT",
+          "type": "http"
+        }
+      },
+      "schemas": {
+        "CreateUserDto": {
+          "type": "object",
+          "properties": {
+            "matricule": {
+              "type": "string",
+              "example": "AG-0457",
+              "description": "Identifiant de connexion obligatoire"
+            },
+            "email": {
+              "type": "string",
+              "description": "Facultatif : certains agents n ont pas d email"
+            },
+            "nom": {
+              "type": "string"
+            },
+            "prenom": {
+              "type": "string"
+            },
+            "telephone": {
+              "type": "string"
+            },
+            "passwordInitial": {
+              "type": "string",
+              "description": "Mot de passe provisoire, a changer a la premiere connexion"
+            },
+            "filialeId": {
+              "type": "string",
+              "description": "Null pour un compte global (direction groupe)"
+            },
+            "roleCodes": {
+              "example": [
+                "AGENT"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "actif": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "matricule",
+            "nom",
+            "prenom",
+            "passwordInitial"
+          ]
+        },
+        "UpdateUserDto": {
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string",
+              "description": "Facultatif : certains agents n ont pas d email"
+            },
+            "nom": {
+              "type": "string"
+            },
+            "prenom": {
+              "type": "string"
+            },
+            "telephone": {
+              "type": "string"
+            },
+            "filialeId": {
+              "type": "string",
+              "description": "Null pour un compte global (direction groupe)"
+            },
+            "roleCodes": {
+              "example": [
+                "AGENT"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "actif": {
+              "type": "boolean"
+            }
+          }
+        },
+        "CreateFilialeDto": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "example": "BEN"
+            },
+            "nom": {
+              "type": "string",
+              "example": "AMIL Benin"
+            },
+            "raisonSociale": {
+              "type": "string"
+            },
+            "pays": {
+              "type": "string",
+              "example": "Benin"
+            },
+            "ville": {
+              "type": "string"
+            },
+            "adresse": {
+              "type": "string"
+            },
+            "telephone": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "devise": {
+              "type": "string",
+              "example": "XOF"
+            },
+            "timezone": {
+              "type": "string",
+              "example": "Africa/Porto-Novo"
+            },
+            "identifiants": {
+              "type": "object",
+              "description": "Agrement CIMA, RCCM, IFU..."
+            },
+            "parentId": {
+              "type": "string",
+              "description": "Entite mere dans la hierarchie du groupe"
+            },
+            "actif": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "code",
+            "nom",
+            "pays"
+          ]
+        },
+        "UpdateFilialeDto": {
+          "type": "object",
+          "properties": {
+            "nom": {
+              "type": "string",
+              "example": "AMIL Benin"
+            },
+            "raisonSociale": {
+              "type": "string"
+            },
+            "pays": {
+              "type": "string",
+              "example": "Benin"
+            },
+            "ville": {
+              "type": "string"
+            },
+            "adresse": {
+              "type": "string"
+            },
+            "telephone": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "devise": {
+              "type": "string",
+              "example": "XOF"
+            },
+            "timezone": {
+              "type": "string",
+              "example": "Africa/Porto-Novo"
+            },
+            "identifiants": {
+              "type": "object",
+              "description": "Agrement CIMA, RCCM, IFU..."
+            },
+            "parentId": {
+              "type": "string",
+              "description": "Entite mere dans la hierarchie du groupe"
+            },
+            "actif": {
+              "type": "boolean"
+            }
+          }
+        },
+        "LoginDto": {
+          "type": "object",
+          "properties": {
+            "identifiant": {
+              "type": "string",
+              "description": "Email ou matricule. Les agents sans email se connectent avec leur matricule.",
+              "example": "SA-0001"
+            },
+            "password": {
+              "type": "string",
+              "example": "MotDePasse!2026"
+            },
+            "codeTotp": {
+              "type": "string",
+              "description": "Code TOTP a 6 chiffres si la 2FA est activee"
+            }
+          },
+          "required": [
+            "identifiant",
+            "password"
+          ]
+        },
+        "RefreshTokenDto": {
+          "type": "object",
+          "properties": {
+            "refreshToken": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "refreshToken"
+          ]
+        },
+        "ChangePasswordDto": {
+          "type": "object",
+          "properties": {
+            "ancienPassword": {
+              "type": "string"
+            },
+            "nouveauPassword": {
+              "type": "string",
+              "description": "10 caracteres minimum, majuscule, minuscule, chiffre, caractere special"
+            }
+          },
+          "required": [
+            "ancienPassword",
+            "nouveauPassword"
+          ]
+        },
+        "ActiverTwoFactorDto": {
+          "type": "object",
+          "properties": {
+            "codeTotp": {
+              "type": "string",
+              "description": "Code affiche par Google Authenticator"
+            }
+          },
+          "required": [
+            "codeTotp"
+          ]
+        },
+        "DesactiverTwoFactorDto": {
+          "type": "object",
+          "properties": {
+            "password": {
+              "type": "string"
+            },
+            "codeTotp": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "password",
+            "codeTotp"
+          ]
+        },
+        "DemandeResetEmailDto": {
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ]
+        },
+        "DemandeResetMatriculeDto": {
+          "type": "object",
+          "properties": {
+            "matricule": {
+              "type": "string",
+              "example": "AG-0457"
+            }
+          },
+          "required": [
+            "matricule"
+          ]
+        },
+        "ResetPasswordDto": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "string"
+            },
+            "nouveauPassword": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "token",
+            "nouveauPassword"
+          ]
+        },
+        "TraiterDemandeResetDto": {
+          "type": "object",
+          "properties": {
+            "demandeId": {
+              "type": "string"
+            },
+            "commentaire": {
+              "type": "string",
+              "description": "Commentaire de traitement (canal de transmission utilise)"
+            }
+          },
+          "required": [
+            "demandeId"
+          ]
+        },
+        "CreateDepartementDto": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "example": "DSI"
+            },
+            "nom": {
+              "type": "string",
+              "example": "Systemes d information"
+            },
+            "description": {
+              "type": "string"
+            },
+            "responsableId": {
+              "type": "string",
+              "description": "Agent responsable du departement"
+            },
+            "filialeId": {
+              "type": "string",
+              "description": "Reserve au SuperAdmin : cible une autre filiale"
+            },
+            "actif": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "code",
+            "nom"
+          ]
+        },
+        "UpdateDepartementDto": {
+          "type": "object",
+          "properties": {
+            "nom": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "responsableId": {
+              "type": "string"
+            },
+            "actif": {
+              "type": "boolean"
+            }
+          }
+        },
+        "CreateServiceDto": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "example": "DSI-DEV"
+            },
+            "nom": {
+              "type": "string",
+              "example": "Etudes et developpement"
+            },
+            "departementId": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "responsableId": {
+              "type": "string"
+            },
+            "filialeId": {
+              "type": "string"
+            },
+            "actif": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "code",
+            "nom",
+            "departementId"
+          ]
+        },
+        "UpdateServiceDto": {
+          "type": "object",
+          "properties": {
+            "nom": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "departementId": {
+              "type": "string",
+              "description": "Rattachement a un autre departement"
+            },
+            "responsableId": {
+              "type": "string"
+            },
+            "actif": {
+              "type": "boolean"
+            }
+          }
+        },
+        "CreateAgentDto": {
+          "type": "object",
+          "properties": {
+            "matricule": {
+              "type": "string",
+              "example": "BEN-AG-0457"
+            },
+            "nom": {
+              "type": "string"
+            },
+            "prenom": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string",
+              "description": "Facultatif : certains agents n ont pas d email"
+            },
+            "telephone": {
+              "type": "string"
+            },
+            "fonction": {
+              "type": "string"
+            },
+            "dateEmbauche": {
+              "type": "string",
+              "example": "2026-01-15"
+            },
+            "departementId": {
+              "type": "string"
+            },
+            "serviceId": {
+              "type": "string"
+            },
+            "filialeId": {
+              "type": "string"
+            },
+            "estGerant": {
+              "type": "boolean",
+              "description": "Marque l agent comme gerant : un seul par filiale"
+            },
+            "creerCompte": {
+              "type": "boolean",
+              "description": "Cree aussi un compte de connexion"
+            },
+            "roleCodes": {
+              "description": "Roles du compte cree",
+              "example": [
+                "AGENT"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "matricule",
+            "nom",
+            "prenom"
+          ]
+        },
+        "UpdateAgentDto": {
+          "type": "object",
+          "properties": {
+            "nom": {
+              "type": "string"
+            },
+            "prenom": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "telephone": {
+              "type": "string"
+            },
+            "fonction": {
+              "type": "string"
+            },
+            "dateEmbauche": {
+              "type": "string"
+            },
+            "dateSortie": {
+              "type": "string"
+            },
+            "departementId": {
+              "type": "string"
+            },
+            "serviceId": {
+              "type": "string"
+            },
+            "estGerant": {
+              "type": "boolean"
+            },
+            "actif": {
+              "type": "boolean"
+            }
+          }
+        },
+        "MuterAgentDto": {
+          "type": "object",
+          "properties": {
+            "departementId": {
+              "type": "string"
+            },
+            "serviceId": {
+              "type": "string"
+            },
+            "fonction": {
+              "type": "string",
+              "description": "Nouvelle fonction, si elle change"
+            },
+            "motif": {
+              "type": "string",
+              "example": "Reorganisation du service production"
+            },
+            "nature": {
+              "type": "string",
+              "enum": [
+                "EMBAUCHE",
+                "MUTATION",
+                "PROMOTION",
+                "REORGANISATION",
+                "INTERIM",
+                "DESIGNATION_GERANT",
+                "FIN_GERANCE",
+                "SORTIE"
+              ],
+              "default": "MUTATION",
+              "description": "Nature du mouvement, portee par l historique des postes"
+            },
+            "dateEffet": {
+              "type": "string",
+              "example": "2026-12-01",
+              "description": "Date d effet. Par defaut aujourd hui. La periode precedente est close la veille."
+            }
+          },
+          "required": [
+            "motif"
+          ]
+        },
+        "SignatureDataUrlDto": {
+          "type": "object",
+          "properties": {
+            "dataUrl": {
+              "type": "string",
+              "description": "Image en data URL, base64",
+              "example": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg..."
+            }
+          },
+          "required": [
+            "dataUrl"
+          ]
+        },
+        "DesignerAgentDto": {
+          "type": "object",
+          "properties": {
+            "agentId": {
+              "type": "string"
+            },
+            "niveau": {
+              "type": "string",
+              "enum": [
+                "CONSULTATION",
+                "GESTION",
+                "GESTION_COMPLETE"
+              ],
+              "default": "GESTION"
+            },
+            "commentaire": {
+              "type": "string",
+              "example": "Remplacement pendant les conges de M. Lokossou"
+            }
+          },
+          "required": [
+            "agentId"
+          ]
+        },
+        "DesignerServiceDto": {
+          "type": "object",
+          "properties": {
+            "serviceId": {
+              "type": "string",
+              "description": "Tout agent de ce service gerera la categorie"
+            },
+            "niveau": {
+              "type": "string",
+              "enum": [
+                "CONSULTATION",
+                "GESTION",
+                "GESTION_COMPLETE"
+              ],
+              "default": "GESTION"
+            },
+            "commentaire": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "serviceId"
+          ]
+        },
+        "CloturerDesignationDto": {
+          "type": "object",
+          "properties": {
+            "dateFin": {
+              "type": "string",
+              "description": "Par defaut aujourd hui"
+            }
+          }
+        }
+      }
+    }
+  },
+  "customOptions": {
+    "persistAuthorization": true
+  }
+};
+  url = options.swaggerUrl || url
+  let urls = options.swaggerUrls
+  let customOptions = options.customOptions
+  let spec1 = options.swaggerDoc
+  let swaggerOptions = {
+    spec: spec1,
+    url: url,
+    urls: urls,
+    dom_id: '#swagger-ui',
+    deepLinking: true,
+    presets: [
+      SwaggerUIBundle.presets.apis,
+      SwaggerUIStandalonePreset
+    ],
+    plugins: [
+      SwaggerUIBundle.plugins.DownloadUrl
+    ],
+    layout: "StandaloneLayout"
+  }
+  for (let attrname in customOptions) {
+    swaggerOptions[attrname] = customOptions[attrname];
+  }
+  let ui = SwaggerUIBundle(swaggerOptions)
+
+  if (customOptions.initOAuth) {
+    ui.initOAuth(customOptions.initOAuth)
+  }
+
+  if (customOptions.authAction) {
+    ui.authActions.authorize(customOptions.authAction)
+  }
+  
+  window.ui = ui
+}
