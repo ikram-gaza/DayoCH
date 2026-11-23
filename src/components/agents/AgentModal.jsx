@@ -116,16 +116,20 @@ export default function AgentModal({
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <label style={labelStyle}>Matricule <span style={{ color: '#dc2626' }}>*</span>
+            <label style={labelStyle}>
+              <span>Matricule <span style={{ color: '#dc2626' }}>*</span></span>
               <input value={matricule} onChange={(e) => setMatricule(e.target.value)} placeholder="Ex : BEN-AG-0457" style={inputStyle} />
             </label>
-            <label style={labelStyle}>Date d’embauche
+            <label style={labelStyle}>
+              <span>Date d’embauche</span>
               <input type="date" value={dateEmbauche} onChange={(e) => setDateEmbauche(e.target.value)} style={inputStyle} />
             </label>
-            <label style={labelStyle}>Prénom <span style={{ color: '#dc2626' }}>*</span>
+            <label style={labelStyle}>
+              <span>Prénom <span style={{ color: '#dc2626' }}>*</span></span>
               <input value={prenom} onChange={(e) => setPrenom(e.target.value)} style={inputStyle} />
             </label>
-            <label style={labelStyle}>Nom <span style={{ color: '#dc2626' }}>*</span>
+            <label style={labelStyle}>
+              <span>Nom <span style={{ color: '#dc2626' }}>*</span></span>
               <input value={nom} onChange={(e) => setNom(e.target.value)} style={inputStyle} />
             </label>
             <label style={labelStyle}>E-mail
