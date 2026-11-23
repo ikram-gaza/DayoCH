@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import PageLoader from './components/ui/PageLoader'
 import LoginPage from './pages/auth/LoginPage'
 import TwoFactorPage from './pages/auth/TwoFactorPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
@@ -35,7 +36,7 @@ const ADMIN_ROLES = ['super_admin']
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   const location = useLocation()
-  if (loading) return <div className="p-6">Chargement…</div>
+  if (loading) return <PageLoader fullscreen label="Chargement de votre session…" />
   if (!user) return <Navigate to="/login" replace />
   if (user.doitChangerMotDePasse && !location.pathname.startsWith('/profil')) {
     return <Navigate to="/profil?changer-mot-de-passe=1" replace />
